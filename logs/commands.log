@@ -1,0 +1,31 @@
+
+================================================================================
+time: 2026-07-07T09:25:43.204299
+cluster: puhti
+command: squeue -u tuomas64
+returncode: 0
+--- stdout ---
+             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
+ 35384088_[5-22%1]     small vg174_co tuomas64 PD       0:00      1 (JobArrayTaskLimit)
+        35384088_4     small vg174_co tuomas64  R       7:37      1 r02c09
+
+--- stderr ---
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+
+
+================================================================================
+time: 2026-07-07T09:26:04.014011
+cluster: puhti
+command: df -h /scratch/project_2001113
+returncode: 0
+--- stdout ---
+Filesystem                                      Size  Used Avail Use% Mounted on
+10.140.15.146@o2ib:10.140.15.145@o2ib:/scratch   10T  6.8T  3.3T  68% /scratch
+
+--- stderr ---
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+

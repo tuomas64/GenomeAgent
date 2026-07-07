@@ -1,0 +1,8 @@
+cluster:
+  name: puhti
+  host_alias: puhti
+  user: tuomas64
+  scratch_project: /scratch/project_2001113
+
+safety:
+  read_only: true
