@@ -18,5 +18,4 @@ Map Illumina short reads to a pangenome graph.
 
 - Use the validated vg version when possible.
 - Avoid many concurrent jobs reading the same graph index files.
-- Use multiple graph-index copies when running large parallel mapping batches.
 - Start with a single sample benchmark before scaling.
