@@ -1,3 +1,12 @@
-.venv/
+.DS_Store
 __pycache__/
 *.pyc
+.venv/
+logs/
+*.log
+*.db
+data/*.db
+.vscode/
+*.pem
+*.key
+.env
