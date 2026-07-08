@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-08T10:54:36",
+  "cluster": "puhti",
+  "host_alias": "puhti",
+  "user": "tuomas64",
+  "workspace": "/scratch/project_2001113",
+  "label": "running_jobs",
+  "category": "workspace_observation",
+  "command": "squeue -u tuomas64",
+  "remote_command": "cd /scratch/project_2001113 && squeue -u tuomas64",
+  "returncode": 0,
+  "stdout": "             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)\n",
+  "stderr": "** WARNING: connection is not using a post-quantum key exchange algorithm.\n** This session may be vulnerable to \"store now, decrypt later\" attacks.\n** The server may need to be upgraded. See https://openssh.com/pq.html\n",
+  "interpretation": null,
+  "confidence": "observed_raw"
+}

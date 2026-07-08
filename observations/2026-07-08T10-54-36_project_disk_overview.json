@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-08T10:54:36",
+  "cluster": "puhti",
+  "host_alias": "puhti",
+  "user": "tuomas64",
+  "workspace": "/scratch/project_2001113",
+  "label": "project_disk_overview",
+  "category": "workspace_observation",
+  "command": "df -h .",
+  "remote_command": "cd /scratch/project_2001113 && df -h .",
+  "returncode": 0,
+  "stdout": "Filesystem                                      Size  Used Avail Use% Mounted on\n10.140.15.146@o2ib:10.140.15.145@o2ib:/scratch   10T  7.0T  3.1T  70% /scratch\n",
+  "stderr": "** WARNING: connection is not using a post-quantum key exchange algorithm.\n** This session may be vulnerable to \"store now, decrypt later\" attacks.\n** The server may need to be upgraded. See https://openssh.com/pq.html\n",
+  "interpretation": null,
+  "confidence": "observed_raw"
+}

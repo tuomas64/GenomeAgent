@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-07-08T10:53:57",
+  "cluster": "puhti",
+  "host_alias": "puhti",
+  "user": "tuomas64",
+  "workspace": null,
+  "label": "login_context",
+  "category": "cluster_observation",
+  "command": "pwd && hostname && whoami",
+  "remote_command": "pwd && hostname && whoami",
+  "returncode": 0,
+  "stdout": "/users/tuomas64\npuhti-login12.bullx\ntuomas64\n",
+  "stderr": "** WARNING: connection is not using a post-quantum key exchange algorithm.\n** This session may be vulnerable to \"store now, decrypt later\" attacks.\n** The server may need to be upgraded. See https://openssh.com/pq.html\n",
+  "interpretation": null,
+  "confidence": "observed_raw"
+}
