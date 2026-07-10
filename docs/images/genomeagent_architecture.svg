@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+  <title id="title">GenomeAgent architecture</title>
+  <desc id="desc">A professional architecture diagram showing a research project and HPC environment observed by the Explorer, interpreted by the GenomeAgent Brain using persistent project knowledge, and passed to a future supervised execution engine. A feedback loop returns execution results to the project.</desc>
+
+  <defs>
+    <linearGradient id="headerGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#173B57"/>
+      <stop offset="100%" stop-color="#245C78"/>
+    </linearGradient>
+    <linearGradient id="brainGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F0F8FC"/>
+      <stop offset="100%" stop-color="#E2F1F7"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#173B57" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8.5" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3D6F88"/>
+    </marker>
+    <marker id="arrowMuted" markerWidth="10" markerHeight="10" refX="8.5" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8296A3"/>
+    </marker>
+    <style>
+      .title { font: 700 34px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #FFFFFF; }
+      .subtitle { font: 400 16px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #D9E8EF; letter-spacing: 0.3px; }
+      .box-title { font: 700 22px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #173B57; }
+      .box-text { font: 400 15px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #425B6A; }
+      .small-label { font: 700 12px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #4D7286; letter-spacing: 1.3px; }
+      .stage-title { font: 700 17px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #173B57; }
+      .stage-text { font: 400 13px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #526A78; }
+      .future { font: 700 12px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #8B641E; letter-spacing: 1px; }
+      .flow-label { font: 600 13px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #52788C; }
+      .footer { font: 400 13px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #687D89; }
+    </style>
+  </defs>
+
+  <!-- Canvas -->
+  <rect width="1400" height="820" fill="#F7FAFC"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1400" height="116" fill="url(#headerGradient)"/>
+  <text x="70" y="53" class="title">GenomeAgent Architecture</text>
+  <text x="70" y="82" class="subtitle">An evolving AI assistant for transparent, reproducible computational genomics on HPC systems</text>
+
+  <!-- Main flow line -->
+  <path d="M310 350 H435" stroke="#3D6F88" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M965 350 H1090" stroke="#3D6F88" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="346" y="331" class="flow-label">Observe</text>
+  <text x="1004" y="331" class="flow-label">Act</text>
+
+  <!-- Input: research project -->
+  <g filter="url(#shadow)">
+    <rect x="70" y="218" width="240" height="264" rx="18" fill="#FFFFFF" stroke="#C7D7E0" stroke-width="1.5"/>
+  </g>
+  <rect x="70" y="218" width="240" height="8" rx="4" fill="#5B8EA8"/>
+  <text x="100" y="265" class="small-label">SCIENTIFIC CONTEXT</text>
+  <text x="100" y="304" class="box-title">Research Project</text>
+
+  <!-- Project icon: folders/files -->
+  <g transform="translate(100 329)">
+    <path d="M0 12 h42 l11 12 h77 a10 10 0 0 1 10 10 v72 a10 10 0 0 1-10 10 H10 a10 10 0 0 1-10-10 V22 a10 10 0 0 1 10-10z" fill="#EAF3F7" stroke="#5B8EA8" stroke-width="2"/>
+    <rect x="25" y="48" width="88" height="8" rx="4" fill="#7EA5B9"/>
+    <rect x="25" y="68" width="68" height="8" rx="4" fill="#A8C1CE"/>
+    <rect x="25" y="88" width="78" height="8" rx="4" fill="#A8C1CE"/>
+  </g>
+  <text x="100" y="458" class="box-text">Data • scripts • workflows</text>
+  <text x="100" y="479" class="box-text">software • storage • jobs</text>
+
+  <!-- Explorer pill overlapping -->
+  <g filter="url(#shadow)">
+    <rect x="360" y="290" width="150" height="120" rx="60" fill="#FFFFFF" stroke="#5B8EA8" stroke-width="2"/>
+  </g>
+  <circle cx="435" cy="327" r="18" fill="#E8F3F8" stroke="#5B8EA8" stroke-width="2"/>
+  <circle cx="429" cy="321" r="6" fill="none" stroke="#315F78" stroke-width="2"/>
+  <line x1="434" y1="326" x2="443" y2="335" stroke="#315F78" stroke-width="3" stroke-linecap="round"/>
+  <text x="435" y="371" text-anchor="middle" class="stage-title">Explorer</text>
+  <text x="435" y="393" text-anchor="middle" class="stage-text">Read-only discovery</text>
+
+  <!-- Brain -->
+  <g filter="url(#shadow)">
+    <rect x="510" y="168" width="455" height="364" rx="22" fill="url(#brainGradient)" stroke="#6E9EB5" stroke-width="2"/>
+  </g>
+  <text x="545" y="215" class="small-label">COGNITIVE CENTER</text>
+  <text x="545" y="254" class="box-title">GenomeAgent Brain</text>
+  <text x="545" y="281" class="box-text">Combines observations, persistent knowledge, and AI reasoning.</text>
+
+  <!-- Four cognitive stages -->
+  <g>
+    <rect x="545" y="315" width="175" height="82" rx="14" fill="#FFFFFF" stroke="#B7CFDA"/>
+    <circle cx="570" cy="340" r="11" fill="#DCEEF5"/>
+    <text x="570" y="345" text-anchor="middle" class="stage-title">1</text>
+    <text x="592" y="345" class="stage-title">Learn</text>
+    <text x="570" y="371" class="stage-text">Extract project structure</text>
+    <text x="570" y="389" class="stage-text">and computing context</text>
+
+    <rect x="745" y="315" width="175" height="82" rx="14" fill="#FFFFFF" stroke="#B7CFDA"/>
+    <circle cx="770" cy="340" r="11" fill="#DCEEF5"/>
+    <text x="770" y="345" text-anchor="middle" class="stage-title">2</text>
+    <text x="792" y="345" class="stage-title">Understand</text>
+    <text x="770" y="371" class="stage-text">Connect files, tools, jobs,</text>
+    <text x="770" y="389" class="stage-text">and scientific workflows</text>
+
+    <rect x="545" y="416" width="175" height="82" rx="14" fill="#FFFFFF" stroke="#B7CFDA"/>
+    <circle cx="570" cy="441" r="11" fill="#DCEEF5"/>
+    <text x="570" y="446" text-anchor="middle" class="stage-title">3</text>
+    <text x="592" y="446" class="stage-title">Reason</text>
+    <text x="570" y="472" class="stage-text">Evaluate alternatives and</text>
+    <text x="570" y="490" class="stage-text">identify improvements</text>
+
+    <rect x="745" y="416" width="175" height="82" rx="14" fill="#FFFFFF" stroke="#B7CFDA"/>
+    <circle cx="770" cy="441" r="11" fill="#DCEEF5"/>
+    <text x="770" y="446" text-anchor="middle" class="stage-title">4</text>
+    <text x="792" y="446" class="stage-title">Plan</text>
+    <text x="770" y="472" class="stage-text">Design reproducible,</text>
+    <text x="770" y="490" class="stage-text">environment-aware workflows</text>
+  </g>
+
+  <!-- Execution engine -->
+  <g filter="url(#shadow)">
+    <rect x="1090" y="218" width="240" height="264" rx="18" fill="#FFFFFF" stroke="#D5C8A9" stroke-width="1.5" stroke-dasharray="7 5"/>
+  </g>
+  <rect x="1090" y="218" width="240" height="8" rx="4" fill="#C99432"/>
+  <text x="1120" y="265" class="future">PLANNED</text>
+  <text x="1120" y="304" class="box-title">Execution Engine</text>
+
+  <!-- terminal icon -->
+  <g transform="translate(1120 329)">
+    <rect x="0" y="0" width="150" height="105" rx="10" fill="#FFF9EC" stroke="#C99432" stroke-width="2"/>
+    <rect x="0" y="0" width="150" height="24" rx="10" fill="#F2DEB7"/>
+    <circle cx="15" cy="12" r="4" fill="#C99432"/>
+    <circle cx="29" cy="12" r="4" fill="#D7B66D"/>
+    <path d="M24 49 l17 14 -17 14" fill="none" stroke="#8A6520" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="53" y1="77" x2="93" y2="77" stroke="#8A6520" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1120" y="458" class="box-text">Safe workflow execution</text>
+  <text x="1120" y="479" class="box-text">under researcher supervision</text>
+
+  <!-- Persistent project knowledge -->
+  <path d="M737 532 V590" stroke="#3D6F88" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M585 646 C465 646 435 570 435 410" stroke="#8296A3" stroke-width="2.5" stroke-dasharray="7 7" fill="none" marker-end="url(#arrowMuted)"/>
+  <text x="447" y="604" class="flow-label">guides future exploration</text>
+
+  <g filter="url(#shadow)">
+    <rect x="585" y="590" width="305" height="126" rx="18" fill="#FFFFFF" stroke="#7CA4B8" stroke-width="1.5"/>
+  </g>
+  <g transform="translate(615 617)">
+    <ellipse cx="32" cy="10" rx="32" ry="10" fill="#DDEEF5" stroke="#477A94" stroke-width="2"/>
+    <path d="M0 10 v50 c0 5.5 14.3 10 32 10s32-4.5 32-10V10" fill="#EAF4F8" stroke="#477A94" stroke-width="2"/>
+    <path d="M0 34 c0 5.5 14.3 10 32 10s32-4.5 32-10" fill="none" stroke="#477A94" stroke-width="2"/>
+  </g>
+  <text x="705" y="626" class="small-label">PERSISTENT MEMORY</text>
+  <text x="705" y="656" class="stage-title">Project Knowledge</text>
+  <text x="705" y="681" class="stage-text">Observations • relationships • protocols</text>
+  <text x="705" y="700" class="stage-text">software • lessons • provenance</text>
+
+  <!-- Human oversight -->
+  <path d="M1210 482 V618 H915" stroke="#8296A3" stroke-width="2.5" stroke-dasharray="7 7" fill="none" marker-end="url(#arrowMuted)"/>
+  <text x="1060" y="608" class="flow-label">results and provenance</text>
+
+  <g>
+    <rect x="1000" y="674" width="330" height="54" rx="27" fill="#EDF2F5" stroke="#B8C6CD"/>
+    <circle cx="1030" cy="701" r="12" fill="#FFFFFF" stroke="#6E8794" stroke-width="2"/>
+    <circle cx="1030" cy="697" r="4" fill="#6E8794"/>
+    <path d="M1021 710 c2-6 16-6 18 0" fill="none" stroke="#6E8794" stroke-width="2" stroke-linecap="round"/>
+    <text x="1054" y="706" class="stage-title">Researcher oversight at every stage</text>
+  </g>
+
+  <!-- Footer -->
+  <line x1="70" y1="770" x2="1330" y2="770" stroke="#D7E1E6"/>
+  <text x="70" y="797" class="footer">Observe → Learn → Reason → Act</text>
+  <text x="1330" y="797" text-anchor="end" class="footer">GenomeAgent • architecture overview</text>
+</svg>
