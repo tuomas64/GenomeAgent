@@ -10,3 +10,10 @@ data/*.db
 *.pem
 *.key
 .env
+
+# GenomeAgent generated task-scan outputs
+workspace/task_scans/*/*/task_scan.json
+workspace/task_scans/*/*/sample_status.tsv
+workspace/task_scans/*/*/missing_outputs.tsv
+workspace/task_scans/*/*/running_jobs.tsv
+workspace/task_scans/*/*/recent_errors.txt
