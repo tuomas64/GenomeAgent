@@ -32,3 +32,21 @@ workspace/executor_runs/
 # Local secrets/configs
 .env
 openai_key*
+
+# GenomeAgent generated workspace outputs
+workspace/*
+!workspace/.gitkeep
+
+# Local/generated knowledge and audit outputs
+project_knowledge*.json
+incremental_brain_manifest.json
+knowledge_diff_v2_to_v3*.md
+script_corpus_audit.md
+
+# Archives and large generated files
+*.tar.gz
+*.zip
+
+# Local secrets/config
+.env
+openai_key*
