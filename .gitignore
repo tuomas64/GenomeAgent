@@ -17,3 +17,18 @@ workspace/task_scans/*/*/sample_status.tsv
 workspace/task_scans/*/*/missing_outputs.tsv
 workspace/task_scans/*/*/running_jobs.tsv
 workspace/task_scans/*/*/recent_errors.txt
+
+# GenomeAgent generated workspace outputs
+workspace/explorer/
+workspace/brain_inputs/
+workspace/task_scans/
+workspace/proposals/
+workspace/executor_runs/
+
+# Large/generated archives
+*.tar.gz
+*.zip
+
+# Local secrets/configs
+.env
+openai_key*
