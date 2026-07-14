@@ -51,7 +51,7 @@ The scan produces:
 - `running_jobs.tsv`: relevant jobs currently reported by `squeue`.
 - `recent_jobs.tsv`: relevant jobs reported by `sacct` for the current day.
 - `scanned_paths.tsv`: path candidates and the paths selected by the profile.
-- `recent_errors.txt`: error-like lines from bounded tails of recent logs.
+- `recent_errors.txt`: records that routine log reading is disabled and points to `failed_intervals.tsv`.
 
 ## Path selection
 
@@ -104,14 +104,29 @@ For every interval, the scanner checks the manifest-defined VCF and its index. T
 
 Interval output metadata is collected with one directory scan per parent directory rather than separate existence and stat calls for every expected path. This is important on Puhti's parallel filesystem, especially while most interval outputs are still absent. The report and `scan_timings.tsv` retain phase timings so unusually slow filesystem, scheduler or log observations can be identified without guessing.
 
-Log discovery is failure-directed and bounded before file access. The production configuration recognizes the `GTscatter_*` scheduler names and selects log files only when their embedded SLURM parent IDs occur in scheduler-confirmed failed records. Eligible filenames are ranked by SLURM parent job ID, with error logs ahead of standard output for the same job, and only the configured maximum is opened and tailed. Metadata is obtained from the already-open file descriptor. Routine progress scans therefore do not open active or historical success logs.
+Routine log opening is disabled for scattered joint-calling scans because even a small number of active Lustre log files can make a read-only observation exceed its time bound. Scheduler-confirmed failed intervals are instead written to `failed_intervals.tsv` with their exact `partN_<array-job>_<array-task>.out` and `.err` paths. Log contents can then be inspected as a separate, targeted diagnostic without delaying routine progress observation.
+
+The eight submission scripts are represented explicitly in the profile configuration. Parts 1–6 contain 111 array tasks, part 7 covers rows 667–776 with 110 tasks and part 8 covers rows 777–886 with 110 tasks. The scanner expands active Slurm arrays and calculates the interval-table task as `array_task_id + offset`. Historical array tasks are mapped from `sacct`'s displayed `JobID`; `JobIDRaw` is retained only as scheduler provenance.
+
+Every interval receives one lifecycle state:
+
+- `completed`: the validated final VCF/index pair exists.
+- `running`: the latest mapped Slurm task is running.
+- `queued`: the mapped Slurm task is pending or configuring.
+- `failed_needs_review`: the latest mapped attempt failed, timed out or was cancelled.
+- `scheduler_completed_output_missing`: Slurm completed the task but no final pair was published.
+- `submitted_unresolved`: its batch has submission evidence, but the bounded scheduler history does not resolve this interval.
+- `not_submitted`: its batch has neither scheduler nor output evidence.
+- `partial_output`: only one member of the final VCF/index pair exists.
 
 The joint-calling scan produces:
 
 - `scatter_summary.tsv`: combined sample, interval, workspace and scheduler counts.
 - `scan_timings.tsv`: remote observation time spent in each bounded scan phase.
 - `interval_status.tsv`: one row for every interval-table task.
-- `incomplete_intervals.tsv`: pending intervals and inconsistent VCF/index pairs.
+- `incomplete_intervals.tsv`: every interval not yet classified as completed.
+- `failed_intervals.tsv`: failed or inconsistent tasks with exact targeted log paths.
+- `batch_status.tsv`: lifecycle counts for parts 1–8.
 - `workspace_status.tsv`: the GenomicsDB workspace required by each chromosome label.
 - `running_jobs.tsv` and `recent_jobs.tsv`: relevant scheduler observations.
 - `scanned_paths.tsv`: configured path candidates and selected paths.
@@ -131,7 +146,7 @@ The profile is read-only. It does not:
 - compute checksums across large files; or
 - perform residual-duplication QC while the main jobs are active.
 
-It reads directory metadata, small deduplication summary files, scheduler state and at most the configured number of bytes from the tails of recent log files. This keeps monitoring lightweight while GAM processing is using the parallel filesystem.
+The GAM profile reads directory metadata, small deduplication summaries and bounded log tails. The scattered joint-calling profile reads manifests, directory metadata and scheduler state but opens no routine logs. These profile-specific boundaries keep monitoring lightweight while production workflows use the parallel filesystem.
 
 ## Adding another task profile
 

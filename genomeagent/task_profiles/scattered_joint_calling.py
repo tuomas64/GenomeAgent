@@ -218,7 +218,7 @@ def inspect_outputs_bulk(vcfs, index_suffixes):
         elif index_nonzero:
             state = "index_present_vcf_missing"
         else:
-            state = "pending"
+            state = "output_absent"
 
         outputs[vcf] = {
             "state": state,
@@ -379,6 +379,11 @@ def parent_job_id(job_id):
     return match.group(1) if match else ""
 
 
+def array_task_id(job_id):
+    match = re.match(r"^\d+_(\d+)$", str(job_id).strip())
+    return int(match.group(1)) if match else None
+
+
 def job_relevant(name, patterns):
     lowered = str(name).lower()
     return any(str(pattern).lower() in lowered for pattern in patterns)
@@ -386,7 +391,7 @@ def job_relevant(name, patterns):
 
 def scheduler_observation(user, account, patterns, recent_days):
     queue_result = run_command([
-        "squeue", "-u", user, "-h", "-o",
+        "squeue", "-r", "-u", user, "-h", "-o",
         "%i|%a|%j|%T|%M|%l|%R",
     ], timeout=30)
     running = []
@@ -402,6 +407,7 @@ def scheduler_observation(user, account, patterns, recent_days):
         running.append({
             "job_id": job_id.strip(),
             "parent_job_id": parent_job_id(job_id),
+            "array_task_id": array_task_id(job_id),
             "account": job_account.strip(),
             "name": name.strip(),
             "state": state.strip(),
@@ -413,21 +419,23 @@ def scheduler_observation(user, account, patterns, recent_days):
     start_date = (datetime.now() - timedelta(days=recent_days)).strftime("%Y-%m-%d")
     history_result = run_command([
         "sacct", "-X", "-n", "-P", "-S", start_date,
-        "--format=JobIDRaw,Account,JobName%60,State,ExitCode,Elapsed",
+        "--format=JobID%40,JobIDRaw,Account,JobName%60,State,ExitCode,Elapsed",
     ], timeout=45)
     recent = []
     for line in history_result["stdout"].splitlines():
         fields = line.split("|")
-        if len(fields) < 6:
+        if len(fields) < 7:
             continue
-        job_id, job_account, name, state, exit_code, elapsed = fields[:6]
+        job_id, job_id_raw, job_account, name, state, exit_code, elapsed = fields[:7]
         if account and job_account.strip() != account:
             continue
         if not job_relevant(name, patterns):
             continue
         recent.append({
             "job_id": job_id.strip(),
+            "job_id_raw": job_id_raw.strip(),
             "parent_job_id": parent_job_id(job_id),
+            "array_task_id": array_task_id(job_id),
             "account": job_account.strip(),
             "name": name.strip(),
             "state": state.strip(),
@@ -728,6 +736,49 @@ def validate_config(config: Mapping[str, Any]) -> None:
     if fallback is not None and (not isinstance(fallback, int) or fallback <= 0):
         raise TaskScanError("expected_samples_fallback must be a positive integer")
 
+    batches = config.get("scatter_batches")
+    if not isinstance(batches, list) or not batches:
+        raise TaskScanError("scattered_joint_calling requires scatter_batches")
+
+    names = set()
+    job_names = set()
+    covered_tasks = set()
+    for batch in batches:
+        if not isinstance(batch, Mapping):
+            raise TaskScanError("each scatter_batches entry must be an object")
+        name = str(batch.get("name", "")).strip()
+        job_name = str(batch.get("job_name", "")).strip()
+        if not name or not job_name:
+            raise TaskScanError("each scatter batch requires name and job_name")
+        if name in names or job_name.lower() in job_names:
+            raise TaskScanError("scatter batch names and job names must be unique")
+        names.add(name)
+        job_names.add(job_name.lower())
+
+        try:
+            array_start = int(batch["array_start"])
+            array_end = int(batch["array_end"])
+            offset = int(batch["offset"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise TaskScanError(
+                f"scatter batch {name} requires integer array_start, array_end and offset"
+            ) from exc
+        if array_start < 0 or array_end < array_start or offset < 0:
+            raise TaskScanError(f"scatter batch {name} has an invalid array range or offset")
+        for array_task in range(array_start, array_end + 1):
+            interval_task = array_task + offset
+            if interval_task in covered_tasks:
+                raise TaskScanError(
+                    f"scatter batch coverage overlaps at interval task {interval_task}"
+                )
+            covered_tasks.add(interval_task)
+
+    expected_batches = config.get("expected_batches")
+    if expected_batches is not None and int(expected_batches) != len(batches):
+        raise TaskScanError(
+            f"expected_batches is {expected_batches}, but {len(batches)} batches are configured"
+        )
+
 
 def build_remote_program(config: Mapping[str, Any]) -> str:
     validate_config(config)
@@ -737,7 +788,210 @@ def build_remote_program(config: Mapping[str, Any]) -> str:
 
 def _failed_state(value: Any) -> bool:
     state = str(value or "").upper()
-    return any(term in state for term in ("FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY"))
+    return any(
+        term in state
+        for term in (
+            "FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY", "NODE_FAIL",
+            "PREEMPTED", "BOOT_FAIL", "DEADLINE", "REVOKED",
+        )
+    )
+
+
+def _scheduler_state_category(value: Any) -> str:
+    state = str(value or "").upper()
+    if state.startswith(("PENDING", "CONFIGURING")):
+        return "queued"
+    if state.startswith(("RUNNING", "COMPLETING", "SUSPENDED", "RESIZING", "STAGE_OUT")):
+        return "running"
+    if _failed_state(state):
+        return "failed_needs_review"
+    if state.startswith("COMPLETED"):
+        return "scheduler_completed_output_missing"
+    return "submitted_unresolved"
+
+
+def _integer_or_none(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _classify_intervals(
+    data: Mapping[str, Any],
+    config: Mapping[str, Any],
+) -> dict[str, Any]:
+    records = list(data.get("interval_table", {}).get("records", []))
+    batches = [dict(item) for item in config.get("scatter_batches", [])]
+    batch_by_job_name = {
+        str(batch["job_name"]).lower(): batch for batch in batches
+    }
+    coverage: dict[int, dict[str, Any]] = {}
+    for batch in batches:
+        for array_task in range(int(batch["array_start"]), int(batch["array_end"]) + 1):
+            coverage[array_task + int(batch["offset"])] = batch
+
+    task_records = {
+        int(record["task"]): record
+        for record in records
+        if _integer_or_none(record.get("task")) is not None
+    }
+    observed_batch_names = set()
+    for task, record in task_records.items():
+        batch = coverage.get(task)
+        if batch and record.get("state") != "output_absent":
+            observed_batch_names.add(str(batch["name"]))
+
+    latest_attempt: dict[int, dict[str, Any]] = {}
+    invalid_scheduler_mappings = []
+    job_sources = (
+        ("sacct", data.get("jobs", {}).get("recent", []), 0),
+        ("squeue", data.get("jobs", {}).get("running", []), 1),
+    )
+    for source, rows, source_priority in job_sources:
+        for row in rows:
+            batch = batch_by_job_name.get(str(row.get("name", "")).lower())
+            if batch is None:
+                continue
+            observed_batch_names.add(str(batch["name"]))
+            array_task = _integer_or_none(row.get("array_task_id"))
+            if array_task is None:
+                continue
+            if not int(batch["array_start"]) <= array_task <= int(batch["array_end"]):
+                invalid_scheduler_mappings.append({
+                    "job_id": row.get("job_id", ""),
+                    "job_name": row.get("name", ""),
+                    "array_task_id": array_task,
+                    "reason": "array_task_outside_configured_batch_range",
+                })
+                continue
+            interval_task = array_task + int(batch["offset"])
+            if interval_task not in task_records:
+                invalid_scheduler_mappings.append({
+                    "job_id": row.get("job_id", ""),
+                    "job_name": row.get("name", ""),
+                    "array_task_id": array_task,
+                    "interval_task": interval_task,
+                    "reason": "mapped_interval_task_not_in_manifest",
+                })
+                continue
+            parent = str(row.get("parent_job_id", ""))
+            parent_number = _integer_or_none(parent) or 0
+            candidate = {
+                **dict(row),
+                "source": source,
+                "batch": batch["name"],
+                "interval_task": interval_task,
+                "array_task_id": array_task,
+                "rank": (parent_number, source_priority),
+            }
+            previous = latest_attempt.get(interval_task)
+            if previous is None or candidate["rank"] > previous["rank"]:
+                latest_attempt[interval_task] = candidate
+
+    outbase = str(data.get("selected_paths", {}).get("outbase") or "")
+    classified = []
+    lifecycle_counts: dict[str, int] = {}
+    for task in sorted(task_records):
+        record = task_records[task]
+        batch = coverage.get(task)
+        attempt = latest_attempt.get(task)
+        output_state = str(record.get("state", "output_absent"))
+
+        if output_state == "completed_atomic_publish_contract":
+            lifecycle_state = "completed"
+        elif output_state in {"vcf_present_index_missing", "index_present_vcf_missing"}:
+            lifecycle_state = "partial_output"
+        elif attempt is not None:
+            lifecycle_state = _scheduler_state_category(attempt.get("state"))
+        elif batch and str(batch["name"]) in observed_batch_names:
+            lifecycle_state = "submitted_unresolved"
+        elif batch:
+            lifecycle_state = "not_submitted"
+        else:
+            lifecycle_state = "unmapped_interval"
+
+        parent = str(attempt.get("parent_job_id", "")) if attempt else ""
+        array_task = attempt.get("array_task_id", "") if attempt else ""
+        log_prefix = str(batch.get("log_prefix", "")) if batch else ""
+        stdout_log = ""
+        stderr_log = ""
+        if outbase and log_prefix and parent and array_task != "":
+            stdout_log = f"{outbase}/logs/{log_prefix}_{parent}_{array_task}.out"
+            stderr_log = f"{outbase}/logs/{log_prefix}_{parent}_{array_task}.err"
+
+        row = {
+            **dict(record),
+            "output_state": output_state,
+            "lifecycle_state": lifecycle_state,
+            "batch": batch.get("name", "") if batch else "",
+            "batch_job_name": batch.get("job_name", "") if batch else "",
+            "scheduler_job_id": attempt.get("job_id", "") if attempt else "",
+            "scheduler_parent_job_id": parent,
+            "scheduler_array_task_id": array_task,
+            "scheduler_state": attempt.get("state", "") if attempt else "",
+            "scheduler_source": attempt.get("source", "") if attempt else "",
+            "stdout_log": stdout_log,
+            "stderr_log": stderr_log,
+        }
+        classified.append(row)
+        lifecycle_counts[lifecycle_state] = lifecycle_counts.get(lifecycle_state, 0) + 1
+
+    batch_summaries = []
+    for batch in batches:
+        batch_rows = [row for row in classified if row["batch"] == batch["name"]]
+        counts = {}
+        for row in batch_rows:
+            state = row["lifecycle_state"]
+            counts[state] = counts.get(state, 0) + 1
+        expected = int(batch["array_end"]) - int(batch["array_start"]) + 1
+        active = counts.get("running", 0) + counts.get("queued", 0)
+        attention = sum(
+            counts.get(state, 0)
+            for state in (
+                "failed_needs_review", "partial_output",
+                "scheduler_completed_output_missing", "unmapped_interval",
+            )
+        )
+        if counts.get("completed", 0) == expected:
+            batch_status = "completed"
+        elif active and attention:
+            batch_status = "active_with_warnings"
+        elif active:
+            batch_status = "active"
+        elif attention:
+            batch_status = "attention_required"
+        elif counts.get("not_submitted", 0) == expected:
+            batch_status = "not_submitted"
+        else:
+            batch_status = "submitted_incomplete"
+        batch_summaries.append({
+            "batch": batch["name"],
+            "job_name": batch["job_name"],
+            "status": batch_status,
+            "expected_intervals": expected,
+            "completed": counts.get("completed", 0),
+            "running": counts.get("running", 0),
+            "queued": counts.get("queued", 0),
+            "failed_needs_review": counts.get("failed_needs_review", 0),
+            "submitted_unresolved": counts.get("submitted_unresolved", 0),
+            "not_submitted": counts.get("not_submitted", 0),
+            "partial_output": counts.get("partial_output", 0),
+            "scheduler_completed_output_missing": counts.get(
+                "scheduler_completed_output_missing", 0
+            ),
+        })
+
+    manifest_tasks = set(task_records)
+    configured_tasks = set(coverage)
+    return {
+        "intervals": classified,
+        "batches": batch_summaries,
+        "lifecycle_counts": lifecycle_counts,
+        "invalid_scheduler_mappings": invalid_scheduler_mappings,
+        "manifest_tasks_without_batch": sorted(manifest_tasks - configured_tasks),
+        "configured_tasks_without_manifest": sorted(configured_tasks - manifest_tasks),
+    }
 
 
 class ScatteredJointCallingProfile:
@@ -767,23 +1021,37 @@ class ScatteredJointCallingProfile:
         records = interval_table.get("records", [])
         workspaces = data.get("workspaces", [])
         jobs = data.get("jobs", {})
-        logs = data.get("logs", {})
+        classification = _classify_intervals(data, config)
+        lifecycle = classification["lifecycle_counts"]
 
         sample_count = int(sample_map.get("unique_samples") or 0)
         fallback_samples = int(config.get("expected_samples_fallback") or 0)
         expected_samples = sample_count or fallback_samples
 
-        state_counts: dict[str, int] = {}
+        output_state_counts: dict[str, int] = {}
         for record in records:
             state = str(record.get("state", "unknown"))
-            state_counts[state] = state_counts.get(state, 0) + 1
+            output_state_counts[state] = output_state_counts.get(state, 0) + 1
 
         expected_intervals = len(records)
-        completed = state_counts.get("completed_atomic_publish_contract", 0)
-        vcf_without_index = state_counts.get("vcf_present_index_missing", 0)
-        index_without_vcf = state_counts.get("index_present_vcf_missing", 0)
-        pending = state_counts.get("pending", 0)
+        completed = lifecycle.get("completed", 0)
+        vcf_without_index = output_state_counts.get("vcf_present_index_missing", 0)
+        index_without_vcf = output_state_counts.get("index_present_vcf_missing", 0)
+        without_output = output_state_counts.get("output_absent", 0)
         inconsistent_pairs = vcf_without_index + index_without_vcf
+        running = lifecycle.get("running", 0)
+        queued = lifecycle.get("queued", 0)
+        failed = lifecycle.get("failed_needs_review", 0)
+        submitted_unresolved = lifecycle.get("submitted_unresolved", 0)
+        not_submitted = lifecycle.get("not_submitted", 0)
+        scheduler_completed_missing = lifecycle.get(
+            "scheduler_completed_output_missing", 0
+        )
+        unmapped_intervals = lifecycle.get("unmapped_interval", 0)
+        active_intervals = running + queued
+        attention_intervals = (
+            failed + inconsistent_pairs + scheduler_completed_missing + unmapped_intervals
+        )
 
         ready_workspaces = sum(
             1 for item in workspaces if item.get("exists") and item.get("nonempty")
@@ -791,8 +1059,9 @@ class ScatteredJointCallingProfile:
         missing_workspaces = len(workspaces) - ready_workspaces
 
         running_jobs = list(jobs.get("running", []))
-        recent_failed = [item for item in jobs.get("recent", []) if _failed_state(item.get("state"))]
-        error_hits = list(logs.get("error_hits", []))
+        scheduler_failed_records = [
+            item for item in jobs.get("recent", []) if _failed_state(item.get("state"))
+        ]
         final_pairs = [
             item for item in data.get("final_vcf_candidates", [])
             if item.get("state") == "completed_atomic_publish_contract"
@@ -828,16 +1097,30 @@ class ScatteredJointCallingProfile:
             warnings.append(
                 f"{inconsistent_pairs} interval outputs have only one member of the final VCF/index pair."
             )
-        if recent_failed:
-            warnings.append(f"Scheduler history contains {len(recent_failed)} failed job records.")
-        if error_hits:
-            warnings.append(f"Bounded recent log tails contain {len(error_hits)} error-like groups.")
+        if failed:
+            warnings.append(f"{failed} intervals have a latest scheduler attempt that failed.")
+        if scheduler_completed_missing:
+            warnings.append(
+                f"{scheduler_completed_missing} scheduler-completed intervals have no published output pair."
+            )
+        if unmapped_intervals:
+            warnings.append(f"{unmapped_intervals} interval rows are not covered by a configured batch.")
+        if classification["invalid_scheduler_mappings"]:
+            warnings.append(
+                f"{len(classification['invalid_scheduler_mappings'])} scheduler records could not be mapped to interval rows."
+            )
+        if not_submitted:
+            warnings.append(
+                f"{not_submitted} intervals belong to batches with no submission evidence yet."
+            )
 
         table_invalid = bool(
             interval_table.get("malformed_lines")
             or interval_table.get("task_line_mismatches")
             or interval_table.get("duplicate_task_ids")
             or interval_table.get("duplicate_output_paths")
+            or classification["manifest_tasks_without_batch"]
+            or classification["configured_tasks_without_manifest"]
         )
 
         if final_pairs:
@@ -856,34 +1139,30 @@ class ScatteredJointCallingProfile:
             overall = "blocked_missing_genomicsdb_workspaces"
             current_stage = "pre_scatter_validation"
             next_action = "inspect_missing_genomicsdb_workspaces"
-        elif completed == expected_intervals and not inconsistent_pairs:
+        elif completed == expected_intervals and not attention_intervals:
             overall = "scattered_genotyping_complete"
             current_stage = "gather_or_merge"
             next_action = "review_interval_completeness_then_prepare_gather"
-        elif running_jobs and (error_hits or recent_failed or inconsistent_pairs):
+        elif active_intervals and attention_intervals:
             overall = "running_with_warnings"
             current_stage = "scattered_genotypegvcfs"
-            next_action = "inspect_current_errors_while_other_shards_continue"
-        elif running_jobs:
+            next_action = "inspect_failed_intervals_while_other_shards_continue"
+        elif active_intervals:
             overall = "running"
             current_stage = "scattered_genotypegvcfs"
             next_action = "wait_and_rescan"
-        elif inconsistent_pairs or error_hits or recent_failed:
+        elif attention_intervals:
             overall = "attention_required"
             current_stage = "scattered_genotypegvcfs"
             next_action = "inspect_failed_or_partial_shards_before_resubmission"
-        elif completed:
+        elif not_submitted:
+            overall = "awaiting_submission"
+            current_stage = "scattered_genotypegvcfs"
+            next_action = "review_and_submit_next_unsubmitted_batch"
+        elif submitted_unresolved:
             overall = "paused_incomplete"
             current_stage = "scattered_genotypegvcfs"
-            next_action = "review_and_submit_remaining_batches"
-        elif pending and not jobs.get("recent") and not logs.get("completion_hits"):
-            overall = "ready_to_start"
-            current_stage = "scattered_genotypegvcfs"
-            next_action = "review_and_submit_first_batch"
-        elif pending:
-            overall = "paused_incomplete"
-            current_stage = "scattered_genotypegvcfs"
-            next_action = "review_and_submit_remaining_batches"
+            next_action = "reconcile_submitted_intervals_without_recent_scheduler_evidence"
         else:
             overall = "ready_to_start"
             current_stage = "scattered_genotypegvcfs"
@@ -898,22 +1177,32 @@ class ScatteredJointCallingProfile:
                 "expected_samples_per_interval": expected_samples,
                 "expected_intervals": expected_intervals,
                 "completed_atomic_publish_contract": completed,
-                "pending_intervals": pending,
+                "without_published_output": without_output,
+                "running_intervals": running,
+                "queued_intervals": queued,
+                "failed_needs_review": failed,
+                "submitted_unresolved": submitted_unresolved,
+                "not_submitted": not_submitted,
+                "scheduler_completed_output_missing": scheduler_completed_missing,
+                "unmapped_intervals": unmapped_intervals,
                 "vcf_present_index_missing": vcf_without_index,
                 "index_present_vcf_missing": index_without_vcf,
                 "ready_genomicsdb_workspaces": ready_workspaces,
                 "expected_genomicsdb_workspaces": len(workspaces),
-                "running_relevant_jobs": len(running_jobs),
-                "recent_failed_job_records": len(recent_failed),
-                "recent_error_hit_groups": len(error_hits),
+                "active_scheduler_records": len(running_jobs),
+                "scheduler_failed_records_observed": len(scheduler_failed_records),
                 "final_vcf_pairs_detected": len(final_pairs),
             },
+            "intervals": classification["intervals"],
+            "batches": classification["batches"],
+            "invalid_scheduler_mappings": classification["invalid_scheduler_mappings"],
             "warnings": warnings,
             "validation_boundary": (
                 "A non-empty final interval VCF/index pair is accepted as completed under the "
                 "configured atomic publication contract: the worker validates the temporary VCF "
                 "header and sample count before moving both files to their final paths. The scanner "
-                "does not independently rerun bcftools across every interval."
+                "does not independently rerun bcftools across every interval. Scheduler state is "
+                "mapped with batch-specific array offsets; routine scans do not open log files."
             ),
             "expected_batches": config.get("expected_batches"),
         }
@@ -925,25 +1214,60 @@ class ScatteredJointCallingProfile:
     ) -> Sequence[Path]:
         observation = payload["observation"]
         status = payload["status_summary"]
-        records = observation.get("interval_table", {}).get("records", [])
+        records = status.get("intervals", [])
 
         interval_status_path = scan_dir / "interval_status.tsv"
         write_tsv(
             interval_status_path,
             records,
             [
-                "line_number", "task", "chromosome", "contig", "start", "end",
-                "interval", "state", "vcf", "vcf_exists_nonzero", "vcf_size_bytes",
-                "vcf_mtime", "index", "index_exists_nonzero", "index_size_bytes",
-                "index_mtime",
+                "line_number", "task", "batch", "batch_job_name", "chromosome",
+                "contig", "start", "end", "interval", "lifecycle_state",
+                "output_state", "scheduler_job_id", "scheduler_parent_job_id",
+                "scheduler_array_task_id", "scheduler_state", "scheduler_source",
+                "vcf", "vcf_exists_nonzero", "vcf_size_bytes", "vcf_mtime",
+                "index", "index_exists_nonzero", "index_size_bytes", "index_mtime",
+                "stdout_log", "stderr_log",
             ],
         )
 
         incomplete_path = scan_dir / "incomplete_intervals.tsv"
         write_tsv(
             incomplete_path,
-            [row for row in records if row.get("state") != "completed_atomic_publish_contract"],
-            ["task", "chromosome", "interval", "state", "vcf", "index"],
+            [row for row in records if row.get("lifecycle_state") != "completed"],
+            [
+                "task", "batch", "chromosome", "interval", "lifecycle_state",
+                "output_state", "scheduler_job_id", "scheduler_array_task_id",
+                "scheduler_state", "vcf", "index", "stdout_log", "stderr_log",
+            ],
+        )
+
+        failed_states = {
+            "failed_needs_review", "partial_output",
+            "scheduler_completed_output_missing", "unmapped_interval",
+        }
+        failed_path = scan_dir / "failed_intervals.tsv"
+        write_tsv(
+            failed_path,
+            [row for row in records if row.get("lifecycle_state") in failed_states],
+            [
+                "task", "batch", "chromosome", "interval", "lifecycle_state",
+                "scheduler_job_id", "scheduler_parent_job_id",
+                "scheduler_array_task_id", "scheduler_state", "stdout_log",
+                "stderr_log", "vcf", "index",
+            ],
+        )
+
+        batch_path = scan_dir / "batch_status.tsv"
+        write_tsv(
+            batch_path,
+            status.get("batches", []),
+            [
+                "batch", "job_name", "status", "expected_intervals", "completed",
+                "running", "queued", "failed_needs_review", "submitted_unresolved",
+                "not_submitted", "partial_output",
+                "scheduler_completed_output_missing",
+            ],
         )
 
         workspace_path = scan_dir / "workspace_status.tsv"
@@ -961,8 +1285,8 @@ class ScatteredJointCallingProfile:
             running_jobs_path,
             observation.get("jobs", {}).get("running", []),
             [
-                "job_id", "parent_job_id", "account", "name", "state", "elapsed",
-                "time_limit", "reason",
+                "job_id", "parent_job_id", "array_task_id", "account", "name",
+                "state", "elapsed", "time_limit", "reason",
             ],
         )
 
@@ -970,7 +1294,10 @@ class ScatteredJointCallingProfile:
         write_tsv(
             recent_jobs_path,
             observation.get("jobs", {}).get("recent", []),
-            ["job_id", "parent_job_id", "account", "name", "state", "exit_code", "elapsed"],
+            [
+                "job_id", "job_id_raw", "parent_job_id", "array_task_id", "account",
+                "name", "state", "exit_code", "elapsed",
+            ],
         )
 
         scanned_paths_path = scan_dir / "scanned_paths.tsv"
@@ -984,11 +1311,10 @@ class ScatteredJointCallingProfile:
         )
 
         errors_path = scan_dir / "recent_errors.txt"
-        error_lines = []
-        for hit in observation.get("logs", {}).get("error_hits", []):
-            error_lines.extend(["=" * 80, hit.get("path", "")])
-            error_lines.extend(hit.get("matched_lines", []))
-            error_lines.append("")
+        error_lines = [
+            "Routine log reading is disabled for this profile.",
+            "Use failed_intervals.tsv to inspect only scheduler-confirmed failed task logs.",
+        ]
         errors_path.write_text("\n".join(error_lines), encoding="utf-8")
 
         summary_path = scan_dir / "scatter_summary.tsv"
@@ -1009,6 +1335,8 @@ class ScatteredJointCallingProfile:
             timings_path,
             interval_status_path,
             incomplete_path,
+            failed_path,
+            batch_path,
             workspace_path,
             running_jobs_path,
             recent_jobs_path,
@@ -1047,9 +1375,39 @@ class ScatteredJointCallingProfile:
             f"{counts['completed_atomic_publish_contract']} | {counts['expected_intervals']} | "
             f"{max(0, counts['expected_intervals'] - counts['completed_atomic_publish_contract'])} |",
             "",
+            "## Interval lifecycle",
+            "",
+            "| State | Intervals |",
+            "|---|---:|",
+            f"| Completed | {counts['completed_atomic_publish_contract']} |",
+            f"| Running | {counts['running_intervals']} |",
+            f"| Queued in Slurm | {counts['queued_intervals']} |",
+            f"| Failed, needs review | {counts['failed_needs_review']} |",
+            f"| Submitted, scheduler state unresolved | {counts['submitted_unresolved']} |",
+            f"| Not submitted | {counts['not_submitted']} |",
+            f"| Scheduler completed, output missing | {counts['scheduler_completed_output_missing']} |",
+            f"| VCF/index pair incomplete | "
+            f"{counts['vcf_present_index_missing'] + counts['index_present_vcf_missing']} |",
+            "",
+            "## Batch progress",
+            "",
+            "| Batch | Job name | Status | Complete | Running | Queued | Failed | Unresolved | Not submitted |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|",
+        ]
+        for batch in status.get("batches", []):
+            lines.append(
+                f"| {batch['batch']} | {batch['job_name']} | {batch['status']} | "
+                f"{batch['completed']}/{batch['expected_intervals']} | "
+                f"{batch['running']} | {batch['queued']} | "
+                f"{batch['failed_needs_review']} | {batch['submitted_unresolved']} | "
+                f"{batch['not_submitted']} |"
+            )
+
+        lines.extend([
+            "",
             "## Counts",
             "",
-        ]
+        ])
         for key, value in counts.items():
             lines.append(f"- {key}: {value}")
         if status.get("expected_batches"):
@@ -1071,9 +1429,9 @@ class ScatteredJointCallingProfile:
             "",
             status["validation_boundary"],
             "",
-            "The scan reads the small interval and sample manifests, filesystem metadata, "
-            "bounded log tails and scheduler state. It does not read complete VCFs, run "
-            "`bcftools` or GATK, submit jobs, remove partial files or modify Puhti.",
+            "The scan reads the small interval and sample manifests, filesystem metadata and "
+            "scheduler state. Routine log opening is disabled. It does not read complete VCFs, "
+            "run `bcftools` or GATK, submit jobs, remove partial files or modify Puhti.",
             "",
             "## Output files",
             "",
@@ -1083,6 +1441,8 @@ class ScatteredJointCallingProfile:
             "- `scan_timings.tsv`",
             "- `interval_status.tsv`",
             "- `incomplete_intervals.tsv`",
+            "- `failed_intervals.tsv`",
+            "- `batch_status.tsv`",
             "- `workspace_status.tsv`",
             "- `running_jobs.tsv`",
             "- `recent_jobs.tsv`",

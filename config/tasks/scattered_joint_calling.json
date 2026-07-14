@@ -1,13 +1,13 @@
 {
-  "profile_version": "1.3",
+  "profile_version": "2.0",
   "project_root": "/scratch/project_2001113",
   "account": "project_2001113",
   "user": "tuomas64",
   "remote_timeout_seconds": 240,
   "recent_job_days": 3,
-  "max_recent_log_files": 16,
+  "max_recent_log_files": 0,
   "max_log_tail_bytes": 65536,
-  "log_scan_policy": "failed_jobs_only",
+  "log_scan_policy": "disabled_routine_scan",
   "expected_samples_fallback": 455,
   "expected_batches": 8,
   "joint_dir_candidates": [
@@ -36,6 +36,72 @@
     "genotyped_scatter",
     "scatter_250kb",
     "joint_scatter"
+  ],
+  "scatter_batches": [
+    {
+      "name": "part1",
+      "job_name": "GTscatter_p1",
+      "array_start": 1,
+      "array_end": 111,
+      "offset": 0,
+      "log_prefix": "part1"
+    },
+    {
+      "name": "part2",
+      "job_name": "GTscatter_p2",
+      "array_start": 1,
+      "array_end": 111,
+      "offset": 111,
+      "log_prefix": "part2"
+    },
+    {
+      "name": "part3",
+      "job_name": "GTscatter_p3",
+      "array_start": 1,
+      "array_end": 111,
+      "offset": 222,
+      "log_prefix": "part3"
+    },
+    {
+      "name": "part4",
+      "job_name": "GTscatter_p4",
+      "array_start": 1,
+      "array_end": 111,
+      "offset": 333,
+      "log_prefix": "part4"
+    },
+    {
+      "name": "part5",
+      "job_name": "GTscatter_p5",
+      "array_start": 1,
+      "array_end": 111,
+      "offset": 444,
+      "log_prefix": "part5"
+    },
+    {
+      "name": "part6",
+      "job_name": "GTscatter_p6",
+      "array_start": 1,
+      "array_end": 111,
+      "offset": 555,
+      "log_prefix": "part6"
+    },
+    {
+      "name": "part7",
+      "job_name": "GTscatter_p7",
+      "array_start": 1,
+      "array_end": 110,
+      "offset": 666,
+      "log_prefix": "part7"
+    },
+    {
+      "name": "part8",
+      "job_name": "GTscatter_p8",
+      "array_start": 1,
+      "array_end": 110,
+      "offset": 776,
+      "log_prefix": "part8"
+    }
   ],
   "log_globs": [
     "{outbase}/logs/*.out",

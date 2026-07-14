@@ -79,6 +79,25 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
             "workspace_template": "{joint_dir}/GenomicsDB_chr{chromosome}",
             "index_suffixes": [".tbi", ".csi"],
             "job_name_patterns": ["scatter_fixture"],
+            "expected_batches": 2,
+            "scatter_batches": [
+                {
+                    "name": "part1",
+                    "job_name": "scatter_fixture_p1",
+                    "array_start": 1,
+                    "array_end": 2,
+                    "offset": 0,
+                    "log_prefix": "part1",
+                },
+                {
+                    "name": "part2",
+                    "job_name": "scatter_fixture_p2",
+                    "array_start": 1,
+                    "array_end": 2,
+                    "offset": 2,
+                    "log_prefix": "part2",
+                },
+            ],
             "log_globs": ["{outbase}/logs/*.err"],
             "final_vcf_globs": ["{outbase}/final*.vcf.gz"],
             "expected_samples_fallback": 455,
@@ -104,7 +123,7 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
             self.assertEqual(states[1], "completed_atomic_publish_contract")
             self.assertEqual(states[2], "vcf_present_index_missing")
             self.assertEqual(states[3], "index_present_vcf_missing")
-            self.assertEqual(states[4], "pending")
+            self.assertEqual(states[4], "output_absent")
             self.assertEqual(observation["sample_map"]["unique_samples"], 3)
             self.assertEqual(len(observation["workspaces"]), 2)
             self.assertTrue(all(item["nonempty"] for item in observation["workspaces"]))
@@ -181,7 +200,7 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
 
             records = observation["interval_table"]["records"]
             self.assertEqual(len(records), 2000)
-            self.assertTrue(all(row["state"] == "pending" for row in records))
+            self.assertTrue(all(row["state"] == "output_absent" for row in records))
             self.assertLess(elapsed, 10.0)
 
     def test_large_log_collection_is_bounded_before_metadata_scan(self):
@@ -231,8 +250,9 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
             "interval_table": {
                 "exists": True,
                 "records": [
-                    {"state": "completed_atomic_publish_contract"},
-                    {"state": "pending"},
+                    {"task": 1, "state": "completed_atomic_publish_contract"},
+                    {"task": 2, "state": "output_absent"},
+                    {"task": 3, "state": "output_absent"},
                 ],
                 "malformed_lines": [],
                 "task_line_mismatches": [],
@@ -242,21 +262,128 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
             },
             "workspaces": [{"exists": True, "nonempty": True}],
             "jobs": {
-                "running": [{"job_id": "222222_1", "name": "GTscatter_p6"}],
-                "recent": [{"job_id": "111111", "state": "FAILED"}],
+                "running": [{
+                    "job_id": "222222_2",
+                    "parent_job_id": "222222",
+                    "array_task_id": 2,
+                    "name": "GTscatter_p1",
+                    "state": "RUNNING",
+                }],
+                "recent": [{
+                    "job_id": "111111_3",
+                    "parent_job_id": "111111",
+                    "array_task_id": 3,
+                    "name": "GTscatter_p1",
+                    "state": "FAILED",
+                }],
             },
             "logs": {"error_hits": []},
             "final_vcf_candidates": [],
+            "selected_paths": {"outbase": "/fixture/outbase"},
         }
         status = ScatteredJointCallingProfile().interpret(
             observation,
-            {"expected_samples_fallback": 455},
+            {
+                "expected_samples_fallback": 455,
+                "scatter_batches": [{
+                    "name": "part1",
+                    "job_name": "GTscatter_p1",
+                    "array_start": 1,
+                    "array_end": 3,
+                    "offset": 0,
+                    "log_prefix": "part1",
+                }],
+            },
         )
         self.assertEqual(status["overall_status"], "running_with_warnings")
         self.assertEqual(status["current_stage"], "scattered_genotypegvcfs")
         self.assertEqual(
             status["next_safe_action"],
-            "inspect_current_errors_while_other_shards_continue",
+            "inspect_failed_intervals_while_other_shards_continue",
+        )
+        failed_rows = [
+            row for row in status["intervals"]
+            if row["lifecycle_state"] == "failed_needs_review"
+        ]
+        self.assertEqual(len(failed_rows), 1)
+        self.assertEqual(
+            failed_rows[0]["stderr_log"],
+            "/fixture/outbase/logs/part1_111111_3.err",
+        )
+
+    def test_scheduler_queued_and_unsubmitted_intervals_are_distinct(self):
+        records = [
+            {"task": task, "state": "output_absent"}
+            for task in range(1, 5)
+        ]
+        observation = {
+            "sample_map": {"unique_samples": 455},
+            "interval_table": {
+                "exists": True,
+                "records": records,
+                "malformed_lines": [],
+                "task_line_mismatches": [],
+                "duplicate_task_ids": [],
+                "duplicate_output_paths": [],
+                "output_scan_errors": [],
+            },
+            "workspaces": [{"exists": True, "nonempty": True}],
+            "jobs": {
+                "running": [
+                    {
+                        "job_id": "222222_1",
+                        "parent_job_id": "222222",
+                        "array_task_id": 1,
+                        "name": "GTscatter_p1",
+                        "state": "RUNNING",
+                    },
+                    {
+                        "job_id": "222222_2",
+                        "parent_job_id": "222222",
+                        "array_task_id": 2,
+                        "name": "GTscatter_p1",
+                        "state": "PENDING",
+                    },
+                ],
+                "recent": [{
+                    "job_id": "111111_1",
+                    "parent_job_id": "111111",
+                    "array_task_id": 1,
+                    "name": "GTscatter_p1",
+                    "state": "FAILED",
+                }],
+            },
+            "logs": {"error_hits": []},
+            "final_vcf_candidates": [],
+            "selected_paths": {"outbase": "/fixture/outbase"},
+        }
+        config = {
+            "expected_samples_fallback": 455,
+            "scatter_batches": [
+                {
+                    "name": "part1", "job_name": "GTscatter_p1",
+                    "array_start": 1, "array_end": 2, "offset": 0,
+                    "log_prefix": "part1",
+                },
+                {
+                    "name": "part2", "job_name": "GTscatter_p2",
+                    "array_start": 1, "array_end": 2, "offset": 2,
+                    "log_prefix": "part2",
+                },
+            ],
+        }
+        status = ScatteredJointCallingProfile().interpret(observation, config)
+        self.assertEqual(status["overall_status"], "running")
+        self.assertEqual(status["counts"]["running_intervals"], 1)
+        self.assertEqual(status["counts"]["queued_intervals"], 1)
+        self.assertEqual(status["counts"]["not_submitted"], 2)
+        states = {
+            row["task"]: row["lifecycle_state"]
+            for row in status["intervals"]
+        }
+        self.assertEqual(
+            states,
+            {1: "running", 2: "queued", 3: "not_submitted", 4: "not_submitted"},
         )
 
     def test_configuration_requires_explicit_atomic_publication_contract(self):
@@ -283,9 +410,16 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
         self.assertEqual(config["expected_samples_fallback"], 455)
         self.assertEqual(config["expected_batches"], 8)
         self.assertEqual(config["index_suffixes"], [".tbi"])
-        self.assertEqual(config["max_recent_log_files"], 16)
-        self.assertEqual(config["log_scan_policy"], "failed_jobs_only")
+        self.assertEqual(config["max_recent_log_files"], 0)
+        self.assertEqual(config["log_scan_policy"], "disabled_routine_scan")
         self.assertIn("gtscatter", config["job_name_patterns"])
+        coverage = []
+        for batch in config["scatter_batches"]:
+            coverage.extend(
+                array_task + batch["offset"]
+                for array_task in range(batch["array_start"], batch["array_end"] + 1)
+            )
+        self.assertEqual(coverage, list(range(1, 887)))
         self.assertIn("intervals_250kb.tsv", config["interval_table_candidates"][0])
         self.assertTrue(
             config["publication_contract"]["atomic_final_vcf_and_index_after_validation"]
