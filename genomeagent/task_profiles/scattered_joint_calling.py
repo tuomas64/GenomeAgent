@@ -454,32 +454,62 @@ def extract_job_id(path):
     return job_id, parent
 
 
-def tail_text(path, max_bytes):
+def read_log_tail(path, max_bytes):
     try:
-        source = Path(path)
-        size = source.stat().st_size
-        with source.open("rb") as handle:
+        with Path(path).open("rb") as handle:
+            stat = os.fstat(handle.fileno())
+            size = stat.st_size
             if size > max_bytes:
                 handle.seek(size - max_bytes)
-            return handle.read().decode("utf-8", errors="replace")
+            text = handle.read().decode("utf-8", errors="replace")
+        return {
+            "text": text,
+            "size_bytes": size,
+            "mtime": time.strftime(
+                "%Y-%m-%dT%H:%M:%S%z", time.localtime(stat.st_mtime)
+            ),
+        }
     except Exception as exc:
-        return "[Could not read %s: %s]" % (path, exc)
+        return {
+            "text": "[Could not read %s: %s]" % (path, exc),
+            "size_bytes": None,
+            "mtime": None,
+            "error": str(exc),
+        }
+
+
+def log_candidate_rank(path):
+    job_id, parent = extract_job_id(path)
+    try:
+        parent_number = int(parent)
+    except ValueError:
+        parent_number = 0
+    task_number = 0
+    if "_" in job_id:
+        try:
+            task_number = int(job_id.rsplit("_", 1)[1])
+        except ValueError:
+            task_number = 0
+    suffix = Path(path).suffix.lower()
+    error_priority = 1 if suffix in {".err", ".e"} else 0
+    return parent_number, error_priority, task_number, Path(path).name
 
 
 def inspect_logs(patterns, max_files, max_bytes):
+    if max_files <= 0:
+        return {
+            "candidate_count": 0,
+            "checked": [],
+            "error_hits": [],
+            "completion_hits": [],
+            "selection_policy": "disabled_by_max_recent_log_files",
+        }
+
     paths = []
     for pattern in patterns:
         paths.extend(glob.glob(pattern))
-    ranked = []
-    for path in sorted(set(paths)):
-        try:
-            stat = Path(path).stat()
-            if Path(path).is_file():
-                ranked.append((stat.st_mtime, stat.st_size, path))
-        except Exception:
-            pass
-    ranked.sort(reverse=True)
-    ranked = ranked[:max_files]
+    unique_paths = set(paths)
+    candidates = sorted(unique_paths, key=log_candidate_rank, reverse=True)[:max_files]
 
     error_patterns = [
         "error", "exception", "traceback", "out of memory", "outofmemory",
@@ -488,13 +518,15 @@ def inspect_logs(patterns, max_files, max_bytes):
     error_hits = []
     completion_hits = []
     checked = []
-    for mtime, size, path in ranked:
+    for path in candidates:
+        tail = read_log_tail(path, max_bytes)
         checked.append({
             "path": path,
-            "size_bytes": size,
-            "mtime": time.strftime("%Y-%m-%dT%H:%M:%S%z", time.localtime(mtime)),
+            "size_bytes": tail.get("size_bytes"),
+            "mtime": tail.get("mtime"),
+            "error": tail.get("error", ""),
         })
-        text = tail_text(path, max_bytes)
+        text = tail["text"]
         lines = text.splitlines()
         matched = [line[-500:] for line in lines if any(p in line.lower() for p in error_patterns)]
         completed = [line[-500:] for line in lines if "Window completed successfully" in line]
@@ -513,7 +545,16 @@ def inspect_logs(patterns, max_files, max_bytes):
                 "parent_job_id": parent,
                 "matched_lines": completed[-10:],
             })
-    return {"checked": checked, "error_hits": error_hits, "completion_hits": completion_hits}
+    return {
+        "candidate_count": len(unique_paths),
+        "checked": checked,
+        "error_hits": error_hits,
+        "completion_hits": completion_hits,
+        "selection_policy": (
+            "newest_slurm_parent_ids_first_then_error_logs_before_stdout; "
+            "metadata_and tails limited before file access"
+        ),
+    }
 
 
 def inspect_final_candidates(patterns, index_suffixes):

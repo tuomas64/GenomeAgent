@@ -184,6 +184,27 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
             self.assertTrue(all(row["state"] == "pending" for row in records))
             self.assertLess(elapsed, 10.0)
 
+    def test_large_log_collection_is_bounded_before_metadata_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config, _, interval_table = self.make_fixture(root)
+            log_dir = interval_table.parent / "logs"
+            for task in range(300):
+                (log_dir / f"scatter_fixture_100000_{task}.err").write_text(
+                    "historical fixture\n", encoding="utf-8"
+                )
+            newest = log_dir / "scatter_fixture_999999_1.err"
+            newest.write_text("ERROR newest relevant failure\n", encoding="utf-8")
+            config["max_recent_log_files"] = 10
+
+            observation = self.run_fixture_observer(config)
+            logs = observation["logs"]
+            self.assertEqual(logs["candidate_count"], 301)
+            self.assertEqual(len(logs["checked"]), 10)
+            self.assertEqual(len(logs["error_hits"]), 1)
+            self.assertEqual(logs["error_hits"][0]["path"], str(newest))
+            self.assertIn("limited before file access", logs["selection_policy"])
+
     def test_configuration_requires_explicit_atomic_publication_contract(self):
         with self.assertRaises(TaskScanError):
             validate_config({
@@ -208,6 +229,7 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
         self.assertEqual(config["expected_samples_fallback"], 455)
         self.assertEqual(config["expected_batches"], 8)
         self.assertEqual(config["index_suffixes"], [".tbi"])
+        self.assertEqual(config["max_recent_log_files"], 128)
         self.assertIn("intervals_250kb.tsv", config["interval_table_candidates"][0])
         self.assertTrue(
             config["publication_contract"]["atomic_final_vcf_and_index_after_validation"]
