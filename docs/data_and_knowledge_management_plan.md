@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.0 (Draft)
+**Current Version:** 1.1 (Draft)
 
 **Last Updated:** July 2026
 
@@ -55,9 +55,36 @@ Temporary and intermediate products that can be recreated from preserved inputs 
 
 Final figures, tables, summary statistics and publication-ready datasets are preserved together with the workflows used to generate them.
 
+## Current Scientific Data Scope
+
+The principal reference project used to develop and validate GenomeAgent is the European *Fragaria vesca* pangenome project. GenomeAgent records biological samples separately from assemblies, haplotypes, sequencing files and analysis-specific subsets so that file counts are never mistaken for sample counts.
+
+### Pangenome assembly data
+
+| Dataset component | Biological material | Assembly sequences used in the graph | Notes |
+|-------------------|---------------------|--------------------------------------|-------|
+| Project PacBio HiFi data | 15 accessions sampled across Europe | 26 haplotype or primary assemblies | Eleven accessions have two haplotype assemblies and four currently have one primary assembly. |
+| Published UK0 accession | 1 accession from Scotland | 2 haplotype assemblies | Included as an external assembly resource. |
+| H4v6 reference | *Fragaria vesca* reference genome v6 | 1 reference assembly | Provides the reference paths and coordinate system. |
+| **Final pangenome graph input** | **16 biological accessions + H4v6 reference** | **29 assembly sequences** | 26 project assemblies + 2 UK0 haplotypes + H4v6. |
+
+### Illumina population data
+
+| Dataset component | Samples | Role |
+|-------------------|---------|------|
+| Own European dataset | 233 | Full project-owned Illumina mapping cohort. |
+| Swedish collaborator dataset | 225 | Full collaborator Illumina mapping cohort. |
+| **Combined graph-mapped cohort** | **458** | Authoritative current cohort for graph mapping, surjection, GATK HaplotypeCaller and graph-based joint genotyping. |
+
+The climatic-adaptation sampling subset is narrower than the full sequencing cohort. It contains 202 of the 233 own samples and 216 Swedish samples with strict exact identifier matches to the coordinate metadata, giving 418 eligible dataset records. The interactive project map displays 417 sample records because RUS6 lacks usable coordinates; these records occupy 412 distinct coordinate locations.
+
+Some earlier linear-reference manifests contain 455 samples. GenomeAgent therefore stores sample counts with the exact dataset, manifest, workflow branch and validation date instead of treating every project-wide count as interchangeable. The current graph cohort is 458 samples: 233 own and 225 Swedish.
+
 ## Knowledge Management
 
 GenomeAgent manages validated protocols, software versions, workflow relationships, benchmarking results, lessons learned, project conventions, successful solutions, rejected approaches and provenance.
+
+For every major sequencing dataset, GenomeAgent should record at minimum the dataset name, biological sample count, assembly or file count where relevant, sequencing technology, data owner or source, authoritative manifest, storage locations, workflow scope, validation status and confidence. Subsets must retain an explicit relationship to their parent dataset and the rule used to select them.
 
 ## Responsible HPC Usage
 
@@ -83,4 +110,5 @@ This Data and Knowledge Management Plan is a living document maintained in the G
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.1 | July 2026 | Added the current *Fragaria vesca* pangenome and Illumina dataset scope, authoritative sample counts and subset relationships. |
 | 1.0 | July 2026 | Initial Data and Knowledge Management Plan for GenomeAgent. |
