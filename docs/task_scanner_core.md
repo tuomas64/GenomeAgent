@@ -17,7 +17,7 @@ The implementation separates reusable infrastructure from scientific task knowle
 - `config/tasks/scattered_joint_calling.json` records the current joint-calling paths, eight submission batches and the worker's atomic publication contract.
 - `scripts/task_scan.py` is the generic command-line entry point and profile registry.
 
-The remote observation is performed in one SSH session. The profile sends a Python program through standard input and receives one structured JSON observation. No GenomeAgent installation is required on Puhti.
+The remote observation is performed in one SSH session. The profile sends a Python program through standard input and receives one structured JSON observation. No GenomeAgent installation is required on Puhti. Each task configuration selects the interpreter with `remote_python`; the Puhti profiles use `/usr/bin/python3` explicitly so an activated Tykky application environment cannot redirect the scan to a wrapper that hangs while reading Python source from SSH standard input.
 
 ## Running the GAM deduplication scan
 

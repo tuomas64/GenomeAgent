@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -106,13 +107,22 @@ def write_tsv(path: Path, rows: Sequence[Mapping[str, Any]], columns: Sequence[s
 class SSHRemotePythonRunner:
     """Execute one Python observation program through an SSH host alias."""
 
-    def __init__(self, host: str):
+    def __init__(self, host: str, python_executable: str = "python3"):
         self.host = host
+        executable = str(python_executable).strip()
+        if not executable or not re.fullmatch(r"[A-Za-z0-9_./+-]+", executable):
+            raise TaskScanError(
+                "remote_python must be a command name or absolute path without spaces"
+            )
+        self.python_executable = executable
 
     def run_python(self, program: str, timeout_seconds: int = 240) -> dict[str, Any]:
         try:
             completed = subprocess.run(
-                ["ssh", "-o", "BatchMode=yes", self.host, "python3", "-"],
+                [
+                    "ssh", "-o", "BatchMode=yes", self.host,
+                    self.python_executable, "-",
+                ],
                 input=program,
                 text=True,
                 capture_output=True,

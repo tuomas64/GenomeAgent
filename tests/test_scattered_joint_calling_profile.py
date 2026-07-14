@@ -418,6 +418,7 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
         )
         config = json.loads(config_path.read_text(encoding="utf-8"))
         self.assertEqual(config["expected_samples_fallback"], 455)
+        self.assertEqual(config["remote_python"], "/usr/bin/python3")
         self.assertEqual(config["expected_batches"], 8)
         self.assertEqual(config["index_suffixes"], [".tbi"])
         self.assertEqual(config["max_recent_log_files"], 0)

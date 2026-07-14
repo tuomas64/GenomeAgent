@@ -66,13 +66,17 @@ def main() -> int:
     try:
         config = read_json_config(config_path)
         profile = PROFILE_REGISTRY[args.task]()
-        runner = SSHRemotePythonRunner(args.host)
+        runner = SSHRemotePythonRunner(
+            args.host,
+            python_executable=config.get("remote_python", "python3"),
+        )
         scanner = TaskScannerCore(runner=runner, output_root=args.out_root)
 
         print("=" * 80)
         print(f"GenomeAgent Task Scanner: {args.task}")
         print("=" * 80)
         print(f"SSH host      : {args.host}")
+        print(f"Remote Python : {runner.python_executable}")
         print(f"Configuration : {config_path}")
         print("Mode          : read-only")
         print("")

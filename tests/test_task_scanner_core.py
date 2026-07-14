@@ -46,6 +46,30 @@ class FakeProfile:
 
 
 class TaskScannerCoreTests(unittest.TestCase):
+    def test_remote_runner_uses_configured_python_executable(self):
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout='{"ok":true}\n',
+            stderr="",
+        )
+        with patch(
+            "genomeagent.task_scanner.subprocess.run",
+            return_value=completed,
+        ) as run:
+            result = SSHRemotePythonRunner(
+                "puhti", python_executable="/usr/bin/python3"
+            ).run_python("print('fixture')")
+
+        self.assertEqual(result, {"ok": True})
+        command = run.call_args.args[0]
+        self.assertEqual(command[-2:], ["/usr/bin/python3", "-"])
+        self.assertEqual(run.call_args.kwargs["input"], "print('fixture')")
+
+    def test_remote_runner_rejects_unsafe_python_executable(self):
+        with self.assertRaises(TaskScanError):
+            SSHRemotePythonRunner("puhti", python_executable="python3; false")
+
     def test_remote_timeout_reports_last_phase_marker(self):
         expired = subprocess.TimeoutExpired(
             cmd=["ssh", "puhti"],
