@@ -1,4 +1,4 @@
-# Data and Knowledge Management Plan (DKMP)
+# Data, Resource and Knowledge Management Plan (DRKMP)
 
 **GenomeAgent**
 
@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.2 (Draft)
+**Current Version:** 1.3 (Draft)
 
 **Last Updated:** July 2026
 
@@ -14,7 +14,7 @@
 
 ## Introduction
 
-GenomeAgent is an AI-assisted software robot designed to support computational genomics research on HPC systems. Unlike a traditional Data Management Plan, this document manages both scientific data and accumulated computational knowledge. It is maintained in the GenomeAgent GitHub repository and evolves together with the software.
+GenomeAgent is an AI-assisted software robot designed to support computational genomics research on HPC systems. Unlike a traditional Data Management Plan, this document manages scientific data, computational-resource evidence and accumulated workflow knowledge. It is maintained in the GenomeAgent GitHub repository and evolves together with the software.
 
 ## Vision
 
@@ -28,8 +28,9 @@ GenomeAgent automates repetitive computational work while researchers remain res
 - Scientific decisions remain with the researcher.
 - Understand before acting.
 - Benchmark before scaling.
-- Preserve both data and knowledge.
+- Preserve scientific data, resource evidence and computational knowledge.
 - Respect shared HPC resources.
+- Base future resource requests on measured evidence.
 - Explain every recommendation.
 
 ## Data Categories
@@ -54,6 +55,12 @@ Temporary and intermediate products that can be recreated from preserved inputs 
 ### Derived Scientific Products
 
 Final figures, tables, summary statistics and publication-ready datasets are preserved together with the workflows used to generate them.
+
+### Operational Resource and Workflow Evidence
+
+Scheduler records, task states, resource measurements, validation summaries and workflow events are operational research data. They are usually regenerable or reproducible for a limited period, but compact canonical observations are preserved because they explain computational cost, support reproducibility and allow GenomeAgent to improve future resource requests.
+
+Large complete logs are not copied into GenomeAgent merely for long-term retention. Instead, the system records bounded evidence with provenance and retains links to the original Puhti job and log records while those records remain available.
 
 ## Current Scientific Data Scope
 
@@ -98,9 +105,47 @@ Derived task-state artifacts are replaceable because they can be reconstructed f
 
 Operational recommendations do not grant execution authority. Cluster submission, data deletion and other mutations require a fresh observation, an allow-listed action, explicit researcher approval, recorded provenance and post-action verification.
 
+## Resource Data and Empirical Learning
+
+GenomeAgent treats measured HPC resource use as evidence from which reusable task knowledge can be derived. Resource learning is deterministic and provenance-aware; it does not require an AI model.
+
+### Resource observations
+
+For each relevant Slurm job, array element or workflow unit, GenomeAgent should record where available:
+
+- GenomeAgent task profile and profile version.
+- Workflow stage, tool, reference, cohort and meaningful workload descriptors.
+- Job, array-task and job-step identifiers.
+- Requested partition, CPUs, memory and wall time.
+- Allocated resources, elapsed time, CPU time, peak resident memory and exit state.
+- Completion, timeout, out-of-memory, cancellation and application-failure outcomes.
+- Scan time, source command or interface, and the originating task-scan bundle.
+
+Array elements are observations in their own right. Parent job records and job-step records must remain distinguishable because peak memory may be reported for a `.batch` or other job step rather than for the parent record. Missing measurements are stored as unknown, never interpreted as zero.
+
+Resource collection must remain bounded and respectful of shared scheduler services. GenomeAgent should query relevant jobs in batches, avoid continuous polling, cache terminal observations and avoid rereading complete scientific outputs solely to estimate resource use.
+
+### Learned resource profiles
+
+GenomeAgent derives versioned resource profiles only from comparable observations. Comparability may depend on the task profile, workflow version, software, reference, cohort size, interval or shard properties and other workload characteristics. Equal genomic interval lengths are not assumed to imply equal computational complexity.
+
+Each learned profile should report its observation count, completion and failure outcomes, typical and high-percentile memory and elapsed time, CPU efficiency where interpretable, safety margin, confidence and provenance. Timeouts and out-of-memory failures provide lower-bound evidence; cancellations and unrelated application failures are not automatically treated as resource insufficiency.
+
+Recommendations are conservative and deterministic. A single unusual job must not redefine a task profile, and GenomeAgent must not infer that additional CPUs will accelerate software unless the tool and workflow can use them. The exact rule and evidence behind every recommendation must be inspectable.
+
+### Storage and promotion of resource knowledge
+
+Individual observations should be kept as append-only canonical records from which derived profiles can be rebuilt. Current state, event history, resource observations, derived profiles and recommendations remain separate artifacts. Generated project state is stored outside version control by default; validated and sanitised summaries may be promoted into repository documentation or configuration when useful.
+
+Raw scheduler output and logs can contain usernames, project accounts and storage paths. They must be reviewed before public release. Compact non-sensitive resource profiles should be retained for at least the lifetime of the associated workflow and preferably alongside the workflow version they describe.
+
+### Relationship to the Execution Engine
+
+The future Execution Engine may consume a learned resource profile when preparing an execution proposal. Learned values remain recommendations until explicitly accepted or incorporated into an authoritative task configuration. Resource learning must never silently alter a running job, resubmit a failed job or change an approved scientific workflow.
+
 ## Responsible HPC Usage
 
-GenomeAgent benchmarks new workflows before scaling, monitors early analyses, estimates resource requirements, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage consumption.
+GenomeAgent benchmarks new workflows before scaling, monitors representative and exceptional analyses, compares requested resources with measured use, estimates future requirements from comparable jobs, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage and scheduler load.
 
 ## Relationship-aware Data Management
 
@@ -108,20 +153,21 @@ Maintenance decisions are based on scientific value, reproducibility, workflow d
 
 ## Learning
 
-GenomeAgent continuously learns from validated workflows, official documentation, benchmarking and researcher feedback while keeping validated knowledge separate from experimental observations.
+GenomeAgent continuously learns from validated workflows, official documentation, benchmarking, measured resource use and researcher feedback. Raw observations, deterministic derived profiles, accepted recommendations and authoritative configuration remain separate so that every change can be reconstructed and reviewed.
 
 ## AI Governance
 
-GenomeAgent may automate validated computational tasks, but it never changes scientific hypotheses, replaces researcher judgement or deletes irreplaceable scientific data automatically.
+GenomeAgent may automate validated computational tasks, but it never changes scientific hypotheses, replaces researcher judgement, deletes irreplaceable scientific data or applies learned resource settings without the required approval.
 
 ## Future Development
 
-This Data and Knowledge Management Plan is a living document maintained in the GenomeAgent GitHub repository and updated as GenomeAgent evolves.
+This Data, Resource and Knowledge Management Plan is a living document maintained in the GenomeAgent GitHub repository and updated as GenomeAgent evolves.
 
 ## Revision History
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.3 | July 2026 | Added HPC resource observations, deterministic empirical resource profiles, retention and provenance requirements, and their controlled relationship to the future Execution Engine. |
 | 1.2 | July 2026 | Added immutable task observations, deterministic operational state, provenance, observation-health gates and the future execution boundary. |
 | 1.1 | July 2026 | Added the current *Fragaria vesca* pangenome and Illumina dataset scope, authoritative sample counts and subset relationships. |
 | 1.0 | July 2026 | Initial Data and Knowledge Management Plan for GenomeAgent. |
