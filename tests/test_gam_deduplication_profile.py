@@ -253,7 +253,7 @@ class GamDeduplicationProfileTests(unittest.TestCase):
         counts = {item["name"]: item["expected_samples"] for item in config["datasets"]}
         self.assertEqual(counts, {"own": 233, "swedish": 225})
         self.assertEqual(sum(counts.values()), 458)
-        self.assertEqual(config["remote_python"], "/usr/bin/python3")
+        self.assertEqual(config["remote_python"], "python3.9")
 
 
 if __name__ == "__main__":
