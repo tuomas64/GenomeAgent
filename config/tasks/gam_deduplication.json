@@ -1,0 +1,72 @@
+{
+  "profile_version": "1.0",
+  "project_root": "/scratch/project_2001113",
+  "account": "project_2001113",
+  "user": "tuomas64",
+  "remote_timeout_seconds": 240,
+  "max_recent_log_files": 48,
+  "max_log_tail_bytes": 65536,
+  "job_name_patterns": [
+    "gam_dedup",
+    "dedup"
+  ],
+  "datasets": [
+    {
+      "name": "own",
+      "expected_samples": 233,
+      "input_dir_candidates": [
+        "/scratch/project_2001113/pangenome/giraffe_mapping/restored_gams_from_allas/gam_minicactus_complete_own_data_trimmed_vg174_8threads_one_at_time",
+        "/scratch/project_2001113/pangenome/giraffe_mapping/gam_minicactus_complete_own_data_trimmed_vg174_8threads_one_at_time",
+        "/scratch/project_2001113/pangenome/giraffe_mapping/gam_minicactus_complete_all_fastqs_vg174_8threads_one_at_time"
+      ],
+      "output_dir_candidates": [
+        "/scratch/project_2001113/pangenome/giraffe_mapping/own_deduplicated_from_allas",
+        "/scratch/project_2001113/pangenome/giraffe_mapping/gam_minicactus_complete_own_data_deduplicated"
+      ],
+      "manifest_candidates": [
+        "/scratch/project_2001113/pangenome/giraffe_mapping/own_remaining_gam_dedup_manifest.tsv",
+        "/scratch/project_2001113/pangenome/giraffe_mapping/own_gam_dedup_manifest.tsv"
+      ],
+      "worker_manifest_globs": [
+        "{output_dir}/worker_*manifest.tsv",
+        "{project_root}/pangenome/giraffe_mapping/own*worker*manifest*.tsv"
+      ],
+      "log_globs": [
+        "{output_dir}/logs/*.out",
+        "{output_dir}/logs/*.err",
+        "{output_dir}/*.out",
+        "{output_dir}/*.err",
+        "{project_root}/pangenome/giraffe_mapping/logs/*own*dedup*.out",
+        "{project_root}/pangenome/giraffe_mapping/logs/*own*dedup*.err"
+      ]
+    },
+    {
+      "name": "swedish",
+      "expected_samples": 225,
+      "input_dir_candidates": [
+        "/scratch/project_2001113/pangenome/giraffe_mapping/restored_gams_from_allas/gam_minicactus_complete_swedish_trimmed_vg174_paired",
+        "/scratch/project_2001113/pangenome/giraffe_mapping/gam_minicactus_complete_swedish_trimmed_vg174_paired"
+      ],
+      "output_dir_candidates": [
+        "/scratch/project_2001113/pangenome/giraffe_mapping/swedish_deduplicated_from_allas",
+        "/scratch/project_2001113/pangenome/giraffe_mapping/gam_minicactus_complete_swedish_deduplicated"
+      ],
+      "manifest_candidates": [
+        "/scratch/project_2001113/pangenome/giraffe_mapping/swedish_remaining_gam_dedup_manifest.tsv",
+        "/scratch/project_2001113/pangenome/giraffe_mapping/swedish_gam_dedup_manifest.tsv"
+      ],
+      "worker_manifest_globs": [
+        "{output_dir}/worker_*manifest.tsv",
+        "{project_root}/pangenome/giraffe_mapping/swedish*worker*manifest*.tsv"
+      ],
+      "log_globs": [
+        "{output_dir}/logs/*.out",
+        "{output_dir}/logs/*.err",
+        "{output_dir}/*.out",
+        "{output_dir}/*.err",
+        "{project_root}/pangenome/giraffe_mapping/logs/*swedish*dedup*.out",
+        "{project_root}/pangenome/giraffe_mapping/logs/*swedish*dedup*.err"
+      ]
+    }
+  ]
+}

@@ -36,6 +36,8 @@ The architecture consists of three major components.
 
 The **Explorer** systematically observes research projects and their computing environments. It collects information about project structure, software, workflows, storage, and HPC resources without modifying the project.
 
+The reusable **Task Scanner Core** extends the Explorer with focused, knowledge-guided observation of active workflows. Task profiles deterministically compare manifests, expected outputs, scheduler state and validation evidence while remaining read-only. The first profile monitors GAM duplicate removal across the 458-sample *Fragaria vesca* graph-mapping cohort.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. It continuously learns from observations and combines accumulated project knowledge with AI reasoning to develop an evolving understanding of the research project.
@@ -62,9 +64,22 @@ The future **Execution Engine** will safely perform computational analyses under
 | HPC Environment Discovery   | ✅                         |
 | GenomeAgent Brain           | ✅                         |
 | Workflow Understanding      | ✅                         |
+| Read-only Task Monitoring   | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
+
+---
+
+# Task Scanner
+
+Run the read-only GAM duplicate-removal profile from the GenomeAgent repository on the Mac:
+
+```bash
+python3 scripts/task_scan.py gam_deduplication
+```
+
+The scanner connects through the `puhti` SSH alias and writes timestamped local reports under `workspace/task_scans/gam_deduplication/`. It does not submit jobs or read complete GAM contents. See the [Task Scanner Core documentation](docs/task_scanner_core.md) for configuration, outputs and safety boundaries.
 
 ---
 
