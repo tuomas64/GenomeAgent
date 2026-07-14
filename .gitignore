@@ -22,6 +22,7 @@ workspace/task_scans/*/*/recent_errors.txt
 workspace/explorer/
 workspace/brain_inputs/
 workspace/task_scans/
+workspace/task_state/
 workspace/proposals/
 workspace/executor_runs/
 

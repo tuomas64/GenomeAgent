@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.1 (Draft)
+**Current Version:** 1.2 (Draft)
 
 **Last Updated:** July 2026
 
@@ -86,6 +86,18 @@ GenomeAgent manages validated protocols, software versions, workflow relationshi
 
 For every major sequencing dataset, GenomeAgent should record at minimum the dataset name, biological sample count, assembly or file count where relevant, sequencing technology, data owner or source, authoritative manifest, storage locations, workflow scope, validation status and confidence. Subsets must retain an explicit relationship to their parent dataset and the rule used to select them.
 
+### Operational Task State
+
+GenomeAgent stores workflow observation, derived operational state and curated knowledge as separate layers:
+
+- Timestamped Task Scanner bundles are immutable read-only observations with configuration and source provenance.
+- The Task State Bridge deterministically rebuilds current state, lifecycle events, observation health and recommendations from those bundles.
+- Researcher-validated protocols, scientific interpretations and reusable lessons are promoted separately into curated knowledge.
+
+Derived task-state artifacts are replaceable because they can be reconstructed from retained scan bundles. Every current state and transition retains the source scan identifier and SHA-256 digest. A failed scheduler or manifest observation blocks action planning rather than being interpreted as an idle workflow.
+
+Operational recommendations do not grant execution authority. Cluster submission, data deletion and other mutations require a fresh observation, an allow-listed action, explicit researcher approval, recorded provenance and post-action verification.
+
 ## Responsible HPC Usage
 
 GenomeAgent benchmarks new workflows before scaling, monitors early analyses, estimates resource requirements, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage consumption.
@@ -110,5 +122,6 @@ This Data and Knowledge Management Plan is a living document maintained in the G
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.2 | July 2026 | Added immutable task observations, deterministic operational state, provenance, observation-health gates and the future execution boundary. |
 | 1.1 | July 2026 | Added the current *Fragaria vesca* pangenome and Illumina dataset scope, authoritative sample counts and subset relationships. |
 | 1.0 | July 2026 | Initial Data and Knowledge Management Plan for GenomeAgent. |

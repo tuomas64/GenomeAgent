@@ -150,6 +150,8 @@ The profile is read-only. It does not:
 
 The GAM profile reads directory metadata, small deduplication summaries and bounded log tails. The scattered joint-calling profile reads manifests, directory metadata and scheduler state but opens no routine logs. These profile-specific boundaries keep monitoring lightweight while production workflows use the parallel filesystem.
 
+Completed scan bundles can be replayed locally through the [Task State and Knowledge Bridge](task_state_bridge.md). The bridge preserves transitions and provenance but does not connect to Puhti or execute its recommendations.
+
 ## Adding another task profile
 
 New profiles implement four operations:

@@ -38,6 +38,8 @@ The **Explorer** systematically observes research projects and their computing e
 
 The reusable **Task Scanner Core** extends the Explorer with focused, knowledge-guided observation of active workflows. Task profiles deterministically compare manifests, expected outputs, scheduler state and validation evidence while remaining read-only. Current profiles monitor GAM duplicate removal across the 458-sample *Fragaria vesca* graph-mapping cohort and interval-scattered GATK joint calling across the 455-sample linear-reference cohort.
 
+The **Task State Bridge** replays those immutable observations into canonical current state, transition history, provenance and safety-gated recommendations. It keeps operational state separate from curated scientific memory and provides a trustworthy input boundary for the future Execution Engine.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. It continuously learns from observations and combines accumulated project knowledge with AI reasoning to develop an evolving understanding of the research project.
@@ -65,6 +67,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | GenomeAgent Brain           | ✅                         |
 | Workflow Understanding      | ✅                         |
 | Read-only Task Monitoring   | ✅ Initial reusable core   |
+| Operational State Bridge    | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -86,6 +89,15 @@ python3 scripts/task_scan.py scattered_joint_calling
 ```
 
 The scanner connects through the `puhti` SSH alias and writes timestamped local reports under `workspace/task_scans/<profile>/`. It does not submit jobs or read complete GAM or VCF contents. See the [Task Scanner Core documentation](docs/task_scanner_core.md) for configuration, outputs and safety boundaries.
+
+Ingest completed scan bundles into canonical operational knowledge with:
+
+```bash
+python3 scripts/task_state.py ingest scattered_joint_calling
+python3 scripts/task_state.py ingest gam_deduplication
+```
+
+The bridge writes local state under `workspace/task_state/<profile>/` and never connects to Puhti or executes recommendations. See the [Task State Bridge documentation](docs/task_state_bridge.md).
 
 ---
 
