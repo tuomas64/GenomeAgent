@@ -199,11 +199,65 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
 
             observation = self.run_fixture_observer(config)
             logs = observation["logs"]
+            self.assertEqual(logs["discovered_candidate_count"], 301)
             self.assertEqual(logs["candidate_count"], 301)
             self.assertEqual(len(logs["checked"]), 10)
             self.assertEqual(len(logs["error_hits"]), 1)
             self.assertEqual(logs["error_hits"][0]["path"], str(newest))
             self.assertIn("limited before file access", logs["selection_policy"])
+
+    def test_failed_jobs_only_policy_skips_logs_without_failed_scheduler_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config, _, interval_table = self.make_fixture(root)
+            log_dir = interval_table.parent / "logs"
+            (log_dir / "scatter_fixture_999999_1.err").write_text(
+                "ERROR active but not scheduler-confirmed failed\n", encoding="utf-8"
+            )
+            config["log_scan_policy"] = "failed_jobs_only"
+
+            observation = self.run_fixture_observer(config)
+            logs = observation["logs"]
+            self.assertEqual(logs["candidate_count"], 0)
+            self.assertEqual(logs["checked"], [])
+            self.assertEqual(
+                logs["selection_policy"],
+                "failed_jobs_only_no_failed_scheduler_ids",
+            )
+
+    def test_running_jobs_with_failed_records_remain_running_with_warnings(self):
+        observation = {
+            "sample_map": {"unique_samples": 455},
+            "interval_table": {
+                "exists": True,
+                "records": [
+                    {"state": "completed_atomic_publish_contract"},
+                    {"state": "pending"},
+                ],
+                "malformed_lines": [],
+                "task_line_mismatches": [],
+                "duplicate_task_ids": [],
+                "duplicate_output_paths": [],
+                "output_scan_errors": [],
+            },
+            "workspaces": [{"exists": True, "nonempty": True}],
+            "jobs": {
+                "running": [{"job_id": "222222_1", "name": "GTscatter_p6"}],
+                "recent": [{"job_id": "111111", "state": "FAILED"}],
+            },
+            "logs": {"error_hits": []},
+            "final_vcf_candidates": [],
+        }
+        status = ScatteredJointCallingProfile().interpret(
+            observation,
+            {"expected_samples_fallback": 455},
+        )
+        self.assertEqual(status["overall_status"], "running_with_warnings")
+        self.assertEqual(status["current_stage"], "scattered_genotypegvcfs")
+        self.assertEqual(
+            status["next_safe_action"],
+            "inspect_current_errors_while_other_shards_continue",
+        )
 
     def test_configuration_requires_explicit_atomic_publication_contract(self):
         with self.assertRaises(TaskScanError):
@@ -229,7 +283,9 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
         self.assertEqual(config["expected_samples_fallback"], 455)
         self.assertEqual(config["expected_batches"], 8)
         self.assertEqual(config["index_suffixes"], [".tbi"])
-        self.assertEqual(config["max_recent_log_files"], 128)
+        self.assertEqual(config["max_recent_log_files"], 16)
+        self.assertEqual(config["log_scan_policy"], "failed_jobs_only")
+        self.assertIn("gtscatter", config["job_name_patterns"])
         self.assertIn("intervals_250kb.tsv", config["interval_table_candidates"][0])
         self.assertTrue(
             config["publication_contract"]["atomic_final_vcf_and_index_after_validation"]

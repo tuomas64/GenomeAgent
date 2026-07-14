@@ -104,7 +104,7 @@ For every interval, the scanner checks the manifest-defined VCF and its index. T
 
 Interval output metadata is collected with one directory scan per parent directory rather than separate existence and stat calls for every expected path. This is important on Puhti's parallel filesystem, especially while most interval outputs are still absent. The report and `scan_timings.tsv` retain phase timings so unusually slow filesystem, scheduler or log observations can be identified without guessing.
 
-Log discovery is bounded before file access. Candidate filenames are ranked by SLURM parent job ID, with error logs ahead of standard output for the same job, and only the configured maximum is opened and tailed. Metadata is obtained from the already-open file descriptor. This prevents large collections of historical array-task logs from turning a lightweight scan into hundreds of parallel-filesystem metadata calls.
+Log discovery is failure-directed and bounded before file access. The production configuration recognizes the `GTscatter_*` scheduler names and selects log files only when their embedded SLURM parent IDs occur in scheduler-confirmed failed records. Eligible filenames are ranked by SLURM parent job ID, with error logs ahead of standard output for the same job, and only the configured maximum is opened and tailed. Metadata is obtained from the already-open file descriptor. Routine progress scans therefore do not open active or historical success logs.
 
 The joint-calling scan produces:
 

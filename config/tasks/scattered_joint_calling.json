@@ -1,12 +1,13 @@
 {
-  "profile_version": "1.2",
+  "profile_version": "1.3",
   "project_root": "/scratch/project_2001113",
   "account": "project_2001113",
   "user": "tuomas64",
   "remote_timeout_seconds": 240,
   "recent_job_days": 3,
-  "max_recent_log_files": 128,
+  "max_recent_log_files": 16,
   "max_log_tail_bytes": 65536,
+  "log_scan_policy": "failed_jobs_only",
   "expected_samples_fallback": 455,
   "expected_batches": 8,
   "joint_dir_candidates": [
@@ -29,6 +30,7 @@
     ".tbi"
   ],
   "job_name_patterns": [
+    "gtscatter",
     "genotypegvcfs",
     "genotype_scatter",
     "genotyped_scatter",

@@ -495,9 +495,10 @@ def log_candidate_rank(path):
     return parent_number, error_priority, task_number, Path(path).name
 
 
-def inspect_logs(patterns, max_files, max_bytes):
+def inspect_logs(patterns, max_files, max_bytes, allowed_parent_ids=None):
     if max_files <= 0:
         return {
+            "discovered_candidate_count": 0,
             "candidate_count": 0,
             "checked": [],
             "error_hits": [],
@@ -505,11 +506,29 @@ def inspect_logs(patterns, max_files, max_bytes):
             "selection_policy": "disabled_by_max_recent_log_files",
         }
 
+    allowed = None if allowed_parent_ids is None else set(allowed_parent_ids)
+    if allowed is not None and not allowed:
+        return {
+            "discovered_candidate_count": 0,
+            "candidate_count": 0,
+            "checked": [],
+            "error_hits": [],
+            "completion_hits": [],
+            "selection_policy": "failed_jobs_only_no_failed_scheduler_ids",
+        }
+
     paths = []
     for pattern in patterns:
         paths.extend(glob.glob(pattern))
     unique_paths = set(paths)
-    candidates = sorted(unique_paths, key=log_candidate_rank, reverse=True)[:max_files]
+    if allowed is None:
+        eligible_paths = unique_paths
+    else:
+        eligible_paths = {
+            path for path in unique_paths
+            if extract_job_id(path)[1] in allowed
+        }
+    candidates = sorted(eligible_paths, key=log_candidate_rank, reverse=True)[:max_files]
 
     error_patterns = [
         "error", "exception", "traceback", "out of memory", "outofmemory",
@@ -546,7 +565,8 @@ def inspect_logs(patterns, max_files, max_bytes):
                 "matched_lines": completed[-10:],
             })
     return {
-        "candidate_count": len(unique_paths),
+        "discovered_candidate_count": len(unique_paths),
+        "candidate_count": len(eligible_paths),
         "checked": checked,
         "error_hits": error_hits,
         "completion_hits": completion_hits,
@@ -620,11 +640,25 @@ jobs = scheduler_observation(
 timings["scheduler"] = round(time.monotonic() - phase_started, 3)
 
 phase_started = time.monotonic()
+log_scan_policy = cfg.get("log_scan_policy", "bounded_recent")
+failed_parent_ids = {
+    item.get("parent_job_id", "")
+    for item in jobs.get("recent", [])
+    if any(
+        term in str(item.get("state", "")).upper()
+        for term in ("FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY")
+    )
+}
+failed_parent_ids.discard("")
+allowed_log_parent_ids = failed_parent_ids if log_scan_policy == "failed_jobs_only" else None
 logs = inspect_logs(
     log_patterns,
     int(cfg.get("max_recent_log_files", 48)),
     int(cfg.get("max_log_tail_bytes", 65536)),
+    allowed_parent_ids=allowed_log_parent_ids,
 )
+logs["configured_policy"] = log_scan_policy
+logs["failed_scheduler_parent_ids"] = sorted(failed_parent_ids)
 timings["logs"] = round(time.monotonic() - phase_started, 3)
 timings["total"] = round(time.monotonic() - scan_started, 3)
 
