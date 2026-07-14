@@ -1,10 +1,10 @@
 {
-  "profile_version": "1.0",
+  "profile_version": "1.1",
   "project_root": "/scratch/project_2001113",
   "account": "project_2001113",
   "user": "tuomas64",
   "remote_timeout_seconds": 240,
-  "recent_job_days": 7,
+  "recent_job_days": 3,
   "max_recent_log_files": 64,
   "max_log_tail_bytes": 65536,
   "expected_samples_fallback": 455,
@@ -26,8 +26,7 @@
   ],
   "workspace_template": "{joint_dir}/GenomicsDB_chr{chromosome}",
   "index_suffixes": [
-    ".tbi",
-    ".csi"
+    ".tbi"
   ],
   "job_name_patterns": [
     "genotypegvcfs",

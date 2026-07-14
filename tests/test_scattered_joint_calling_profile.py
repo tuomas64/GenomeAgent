@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -109,6 +110,9 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
             self.assertTrue(all(item["nonempty"] for item in observation["workspaces"]))
             self.assertFalse(observation["io_policy"]["vcf_content_read"])
             self.assertFalse(observation["io_policy"]["bcftools_run"])
+            self.assertIn("interval_table_and_outputs", observation["timings_seconds"])
+            self.assertIn("total", observation["timings_seconds"])
+            self.assertEqual(observation["interval_table"]["output_scan_errors"], [])
 
             status = ScatteredJointCallingProfile().interpret(observation, config)
             self.assertEqual(status["overall_status"], "attention_required")
@@ -127,8 +131,10 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
             report = profile.render_report(payload, scan_dir)
             self.assertTrue(all(path.exists() for path in artifacts))
             self.assertIn("completed_atomic_publish_contract", (scan_dir / "interval_status.tsv").read_text())
+            self.assertIn("interval_table_and_outputs", (scan_dir / "scan_timings.tsv").read_text())
             self.assertIn("Overall status: **attention_required**", report)
             self.assertIn("does not read complete VCFs", report)
+            self.assertIn("## Scan timings", report)
 
             for output in outputs:
                 output.write_bytes(b"published-vcf")
@@ -158,6 +164,26 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
                 "repair_interval_table_before_any_submission",
             )
 
+    def test_large_pending_manifest_uses_bounded_directory_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config, _, interval_table = self.make_fixture(root)
+            outbase = interval_table.parent
+            rows = [
+                f"{task}\t1\tchr1\t{task}\t{task}\t{outbase / f'pending_{task}.vcf.gz'}"
+                for task in range(1, 2001)
+            ]
+            interval_table.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            started = time.monotonic()
+            observation = self.run_fixture_observer(config)
+            elapsed = time.monotonic() - started
+
+            records = observation["interval_table"]["records"]
+            self.assertEqual(len(records), 2000)
+            self.assertTrue(all(row["state"] == "pending" for row in records))
+            self.assertLess(elapsed, 10.0)
+
     def test_configuration_requires_explicit_atomic_publication_contract(self):
         with self.assertRaises(TaskScanError):
             validate_config({
@@ -181,6 +207,7 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
         config = json.loads(config_path.read_text(encoding="utf-8"))
         self.assertEqual(config["expected_samples_fallback"], 455)
         self.assertEqual(config["expected_batches"], 8)
+        self.assertEqual(config["index_suffixes"], [".tbi"])
         self.assertIn("intervals_250kb.tsv", config["interval_table_candidates"][0])
         self.assertTrue(
             config["publication_contract"]["atomic_final_vcf_and_index_after_validation"]

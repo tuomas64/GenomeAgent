@@ -13,7 +13,9 @@ from genomeagent.task_scanner import RemoteRunner, TaskScanError, write_tsv
 REMOTE_OBSERVER = r'''
 import glob
 import json
+import os
 import re
+import stat as stat_module
 import subprocess
 import time
 from datetime import datetime, timedelta
@@ -38,26 +40,70 @@ def path_info(path):
         "mtime": None,
     }
     try:
-        info["exists"] = p.exists()
-        info["is_file"] = p.is_file()
-        info["is_dir"] = p.is_dir()
-        if info["exists"]:
-            stat = p.stat()
-            info["size_bytes"] = stat.st_size
-            info["mtime"] = time.strftime(
-                "%Y-%m-%dT%H:%M:%S%z", time.localtime(stat.st_mtime)
-            )
+        stat = p.stat()
+        info["exists"] = True
+        info["is_file"] = stat_module.S_ISREG(stat.st_mode)
+        info["is_dir"] = stat_module.S_ISDIR(stat.st_mode)
+        info["size_bytes"] = stat.st_size
+        info["mtime"] = time.strftime(
+            "%Y-%m-%dT%H:%M:%S%z", time.localtime(stat.st_mtime)
+        )
+    except FileNotFoundError:
+        pass
     except Exception as exc:
         info["error"] = str(exc)
     return info
 
 
-def file_nonzero(path):
-    try:
-        p = Path(path)
-        return p.is_file() and p.stat().st_size > 0
-    except Exception:
-        return False
+def bulk_path_info(paths):
+    """Inspect requested filenames with one directory scan per parent directory."""
+    normalized = sorted({str(Path(path)) for path in paths})
+    results = {
+        path: {
+            "path": path,
+            "exists": False,
+            "is_file": False,
+            "is_dir": False,
+            "size_bytes": None,
+            "mtime": None,
+        }
+        for path in normalized
+    }
+    grouped = {}
+    for path in normalized:
+        source = Path(path)
+        grouped.setdefault(str(source.parent), {}).setdefault(source.name, []).append(path)
+
+    errors = []
+    for parent, names in grouped.items():
+        try:
+            with os.scandir(parent) as entries:
+                for entry in entries:
+                    requested = names.get(entry.name)
+                    if not requested:
+                        continue
+                    try:
+                        stat = entry.stat(follow_symlinks=True)
+                        info = {
+                            "path": str(Path(parent) / entry.name),
+                            "exists": True,
+                            "is_file": stat_module.S_ISREG(stat.st_mode),
+                            "is_dir": stat_module.S_ISDIR(stat.st_mode),
+                            "size_bytes": stat.st_size,
+                            "mtime": time.strftime(
+                                "%Y-%m-%dT%H:%M:%S%z", time.localtime(stat.st_mtime)
+                            ),
+                        }
+                        for path in requested:
+                            results[path] = {**info, "path": path}
+                    except Exception as exc:
+                        for path in requested:
+                            results[path]["error"] = str(exc)
+        except FileNotFoundError:
+            continue
+        except Exception as exc:
+            errors.append({"directory": parent, "error": str(exc)})
+    return results, errors
 
 
 def directory_nonempty(path):
@@ -143,39 +189,49 @@ def resolve_output_path(value, outbase):
     return candidate
 
 
-def inspect_output(vcf, index_suffixes):
-    vcf_info = path_info(vcf)
-    index_candidates = [Path(str(vcf) + suffix) for suffix in index_suffixes]
-    selected_index = index_candidates[0] if index_candidates else Path(str(vcf) + ".tbi")
-    for candidate in index_candidates:
-        if file_nonzero(candidate):
-            selected_index = candidate
-            break
+def inspect_outputs_bulk(vcfs, index_suffixes):
+    normalized_vcfs = sorted({str(Path(vcf)) for vcf in vcfs})
+    suffixes = list(index_suffixes) or [".tbi"]
+    requested = list(normalized_vcfs)
+    for vcf in normalized_vcfs:
+        requested.extend(vcf + suffix for suffix in suffixes)
+    infos, errors = bulk_path_info(requested)
 
-    index_info = path_info(selected_index)
-    vcf_nonzero = bool(vcf_info["is_file"] and (vcf_info["size_bytes"] or 0) > 0)
-    index_nonzero = bool(index_info["is_file"] and (index_info["size_bytes"] or 0) > 0)
+    outputs = {}
+    for vcf in normalized_vcfs:
+        vcf_info = infos[vcf]
+        index_candidates = [vcf + suffix for suffix in suffixes]
+        selected_index = index_candidates[0]
+        for candidate in index_candidates:
+            info = infos[candidate]
+            if info["is_file"] and (info["size_bytes"] or 0) > 0:
+                selected_index = candidate
+                break
+        index_info = infos[selected_index]
+        vcf_nonzero = bool(vcf_info["is_file"] and (vcf_info["size_bytes"] or 0) > 0)
+        index_nonzero = bool(index_info["is_file"] and (index_info["size_bytes"] or 0) > 0)
 
-    if vcf_nonzero and index_nonzero:
-        state = "completed_atomic_publish_contract"
-    elif vcf_nonzero:
-        state = "vcf_present_index_missing"
-    elif index_nonzero:
-        state = "index_present_vcf_missing"
-    else:
-        state = "pending"
+        if vcf_nonzero and index_nonzero:
+            state = "completed_atomic_publish_contract"
+        elif vcf_nonzero:
+            state = "vcf_present_index_missing"
+        elif index_nonzero:
+            state = "index_present_vcf_missing"
+        else:
+            state = "pending"
 
-    return {
-        "state": state,
-        "vcf": str(vcf),
-        "vcf_exists_nonzero": vcf_nonzero,
-        "vcf_size_bytes": vcf_info.get("size_bytes"),
-        "vcf_mtime": vcf_info.get("mtime"),
-        "index": str(selected_index),
-        "index_exists_nonzero": index_nonzero,
-        "index_size_bytes": index_info.get("size_bytes"),
-        "index_mtime": index_info.get("mtime"),
-    }
+        outputs[vcf] = {
+            "state": state,
+            "vcf": vcf,
+            "vcf_exists_nonzero": vcf_nonzero,
+            "vcf_size_bytes": vcf_info.get("size_bytes"),
+            "vcf_mtime": vcf_info.get("mtime"),
+            "index": selected_index,
+            "index_exists_nonzero": index_nonzero,
+            "index_size_bytes": index_info.get("size_bytes"),
+            "index_mtime": index_info.get("mtime"),
+        }
+    return outputs, errors
 
 
 def read_interval_table(path, outbase, index_suffixes):
@@ -187,6 +243,7 @@ def read_interval_table(path, outbase, index_suffixes):
         "task_line_mismatches": [],
         "duplicate_task_ids": [],
         "duplicate_output_paths": [],
+        "output_scan_errors": [],
     }
     if not path:
         return result
@@ -236,7 +293,6 @@ def read_interval_table(path, outbase, index_suffixes):
                     })
 
                 vcf = resolve_output_path(vcf_raw, outbase)
-                output = inspect_output(vcf, index_suffixes)
                 interval = "%s:%s-%s" % (contig, start, end)
                 record = {
                     "line_number": line_number,
@@ -246,7 +302,7 @@ def read_interval_table(path, outbase, index_suffixes):
                     "start": start,
                     "end": end,
                     "interval": interval,
-                    **output,
+                    "vcf": str(vcf),
                 }
                 result["records"].append(record)
                 seen_tasks.setdefault(task, []).append(line_number)
@@ -265,6 +321,12 @@ def read_interval_table(path, outbase, index_suffixes):
         for vcf, tasks in sorted(seen_outputs.items())
         if len(tasks) > 1
     ]
+    outputs, output_errors = inspect_outputs_bulk(
+        [record["vcf"] for record in result["records"]], index_suffixes
+    )
+    for record in result["records"]:
+        record.update(outputs[record["vcf"]])
+    result["output_scan_errors"] = output_errors
     return result
 
 
@@ -458,12 +520,14 @@ def inspect_final_candidates(patterns, index_suffixes):
     paths = []
     for pattern in patterns:
         paths.extend(glob.glob(pattern))
-    rows = []
-    for path in sorted(set(paths)):
-        rows.append(inspect_output(Path(path), index_suffixes))
-    return rows
+    outputs, _ = inspect_outputs_bulk(paths, index_suffixes)
+    return [outputs[path] for path in sorted(outputs)]
 
 
+scan_started = time.monotonic()
+timings = {}
+
+phase_started = time.monotonic()
 scanned_paths = []
 joint_dir = select_candidate(
     cfg.get("joint_dir_candidates", []), "joint_dir", "dir", scanned_paths
@@ -479,18 +543,49 @@ interval_candidates = [format_value(x, context) for x in cfg.get("interval_table
 interval_path = select_candidate(interval_candidates, "interval_table", "file", scanned_paths)
 reference_candidates = [format_value(x, context) for x in cfg.get("reference_candidates", [])]
 reference_path = select_candidate(reference_candidates, "reference", "file", scanned_paths)
+timings["path_selection"] = round(time.monotonic() - phase_started, 3)
 
+phase_started = time.monotonic()
 sample_map = read_sample_map(sample_map_path)
+timings["sample_map"] = round(time.monotonic() - phase_started, 3)
+
+phase_started = time.monotonic()
 index_suffixes = cfg.get("index_suffixes", [".tbi", ".csi"])
 interval_table = read_interval_table(interval_path, outbase, index_suffixes)
+timings["interval_table_and_outputs"] = round(time.monotonic() - phase_started, 3)
+
+phase_started = time.monotonic()
 workspaces = inspect_workspaces(
     interval_table["records"],
     joint_dir,
     cfg.get("workspace_template", "{joint_dir}/GenomicsDB_chr{chromosome}"),
 )
+timings["genomicsdb_workspaces"] = round(time.monotonic() - phase_started, 3)
 
 log_patterns = [format_value(x, context) for x in cfg.get("log_globs", [])]
 final_patterns = [format_value(x, context) for x in cfg.get("final_vcf_globs", [])]
+
+phase_started = time.monotonic()
+final_candidates = inspect_final_candidates(final_patterns, index_suffixes)
+timings["final_candidates"] = round(time.monotonic() - phase_started, 3)
+
+phase_started = time.monotonic()
+jobs = scheduler_observation(
+    cfg.get("user", ""),
+    cfg.get("account", ""),
+    cfg.get("job_name_patterns", []),
+    int(cfg.get("recent_job_days", 7)),
+)
+timings["scheduler"] = round(time.monotonic() - phase_started, 3)
+
+phase_started = time.monotonic()
+logs = inspect_logs(
+    log_patterns,
+    int(cfg.get("max_recent_log_files", 48)),
+    int(cfg.get("max_log_tail_bytes", 65536)),
+)
+timings["logs"] = round(time.monotonic() - phase_started, 3)
+timings["total"] = round(time.monotonic() - scan_started, 3)
 
 result = {
     "scanned_at_cluster_time": now_local_iso(),
@@ -513,18 +608,10 @@ result = {
     "sample_map": sample_map,
     "interval_table": interval_table,
     "workspaces": workspaces,
-    "final_vcf_candidates": inspect_final_candidates(final_patterns, index_suffixes),
-    "jobs": scheduler_observation(
-        cfg.get("user", ""),
-        cfg.get("account", ""),
-        cfg.get("job_name_patterns", []),
-        int(cfg.get("recent_job_days", 7)),
-    ),
-    "logs": inspect_logs(
-        log_patterns,
-        int(cfg.get("max_recent_log_files", 48)),
-        int(cfg.get("max_log_tail_bytes", 65536)),
-    ),
+    "final_vcf_candidates": final_candidates,
+    "jobs": jobs,
+    "logs": logs,
+    "timings_seconds": timings,
     "publication_contract": cfg.get("publication_contract", {}),
     "io_policy": {
         "remote_mutation": False,
@@ -658,6 +745,10 @@ class ScatteredJointCallingProfile:
             warnings.append("Duplicate task identifiers were detected in the interval table.")
         if interval_table.get("duplicate_output_paths"):
             warnings.append("Multiple interval records resolve to the same output VCF path.")
+        if interval_table.get("output_scan_errors"):
+            warnings.append(
+                f"Could not scan {len(interval_table['output_scan_errors'])} output directories."
+            )
         if inconsistent_pairs:
             warnings.append(
                 f"{inconsistent_pairs} interval outputs have only one member of the final VCF/index pair."
@@ -828,8 +919,19 @@ class ScatteredJointCallingProfile:
         summary_path = scan_dir / "scatter_summary.tsv"
         write_tsv(summary_path, [status["counts"]], list(status["counts"].keys()))
 
+        timings_path = scan_dir / "scan_timings.tsv"
+        write_tsv(
+            timings_path,
+            [
+                {"phase": phase, "seconds": seconds}
+                for phase, seconds in observation.get("timings_seconds", {}).items()
+            ],
+            ["phase", "seconds"],
+        )
+
         return (
             summary_path,
+            timings_path,
             interval_status_path,
             incomplete_path,
             workspace_path,
@@ -882,6 +984,12 @@ class ScatteredJointCallingProfile:
             lines.extend(["", "## Warnings", ""])
             lines.extend(f"- {warning}" for warning in status["warnings"])
 
+        timings = observation.get("timings_seconds", {})
+        if timings:
+            lines.extend(["", "## Scan timings", ""])
+            for phase, seconds in timings.items():
+                lines.append(f"- {phase}: {seconds} seconds")
+
         lines.extend([
             "",
             "## Validation boundary",
@@ -897,6 +1005,7 @@ class ScatteredJointCallingProfile:
             "- `task_scan.json`",
             "- `report.md`",
             "- `scatter_summary.tsv`",
+            "- `scan_timings.tsv`",
             "- `interval_status.tsv`",
             "- `incomplete_intervals.tsv`",
             "- `workspace_status.tsv`",

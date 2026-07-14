@@ -102,9 +102,12 @@ The authoritative task universe comes from `genotyped_scatter_250kb/intervals_25
 
 For every interval, the scanner checks the manifest-defined VCF and its index. The production worker writes into a task-specific temporary directory, verifies that the VCF and TBI are non-empty, checks VCF header readability and verifies 455 samples before moving the pair to its final paths. The profile therefore records a final non-empty VCF/index pair as `completed_atomic_publish_contract`. This is workflow-contract evidence, not an independent content scan: GenomeAgent deliberately does not launch `bcftools` once per interval while the scattered workflow is active.
 
+Interval output metadata is collected with one directory scan per parent directory rather than separate existence and stat calls for every expected path. This is important on Puhti's parallel filesystem, especially while most interval outputs are still absent. The report and `scan_timings.tsv` retain phase timings so unusually slow filesystem, scheduler or log observations can be identified without guessing.
+
 The joint-calling scan produces:
 
 - `scatter_summary.tsv`: combined sample, interval, workspace and scheduler counts.
+- `scan_timings.tsv`: remote observation time spent in each bounded scan phase.
 - `interval_status.tsv`: one row for every interval-table task.
 - `incomplete_intervals.tsv`: pending intervals and inconsistent VCF/index pairs.
 - `workspace_status.tsv`: the GenomicsDB workspace required by each chromosome label.
