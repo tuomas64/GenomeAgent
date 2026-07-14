@@ -1,0 +1,65 @@
+{
+  "profile_version": "1.0",
+  "project_root": "/scratch/project_2001113",
+  "account": "project_2001113",
+  "user": "tuomas64",
+  "remote_timeout_seconds": 240,
+  "recent_job_days": 7,
+  "max_recent_log_files": 64,
+  "max_log_tail_bytes": 65536,
+  "expected_samples_fallback": 455,
+  "expected_batches": 8,
+  "joint_dir_candidates": [
+    "/scratch/project_2001113/GATK/jointcalling"
+  ],
+  "outbase_candidates": [
+    "{joint_dir}/genotyped_scatter_250kb"
+  ],
+  "sample_map_candidates": [
+    "{joint_dir}/sample_map.txt"
+  ],
+  "interval_table_candidates": [
+    "{outbase}/intervals_250kb.tsv"
+  ],
+  "reference_candidates": [
+    "{joint_dir}/reference/H4v6_jointcalling.fa"
+  ],
+  "workspace_template": "{joint_dir}/GenomicsDB_chr{chromosome}",
+  "index_suffixes": [
+    ".tbi",
+    ".csi"
+  ],
+  "job_name_patterns": [
+    "genotypegvcfs",
+    "genotype_scatter",
+    "genotyped_scatter",
+    "scatter_250kb",
+    "joint_scatter"
+  ],
+  "log_globs": [
+    "{outbase}/logs/*.out",
+    "{outbase}/logs/*.err",
+    "{outbase}/*.out",
+    "{outbase}/*.err",
+    "{joint_dir}/logs/*genotyp*scatter*.out",
+    "{joint_dir}/logs/*genotyp*scatter*.err",
+    "{joint_dir}/logs/*genotypegvcfs*.out",
+    "{joint_dir}/logs/*genotypegvcfs*.err"
+  ],
+  "final_vcf_globs": [
+    "{outbase}/gathered*.vcf.gz",
+    "{outbase}/merged*.vcf.gz",
+    "{outbase}/final*.vcf.gz"
+  ],
+  "publication_contract": {
+    "atomic_final_vcf_and_index_after_validation": true,
+    "temporary_output_location": "{outbase}/tmp/task_<TASK>_<SLURM_JOB_ID>",
+    "worker_validations": [
+      "non-empty temporary VCF",
+      "non-empty temporary TBI",
+      "bcftools header readability",
+      "sample count equals the workflow expectation"
+    ],
+    "publish_operation": "move validated temporary VCF and TBI to manifest-defined final paths"
+  }
+}

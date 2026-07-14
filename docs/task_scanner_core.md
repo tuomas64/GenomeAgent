@@ -4,7 +4,7 @@
 
 The Task Scanner Core provides a common framework for deterministic, read-only inspection of active scientific workflows. Each task profile defines what GenomeAgent should observe, how those observations are interpreted and which task-specific reports are produced.
 
-The first reusable profile monitors GAM duplicate removal for the *Fragaria vesca* pangenome project. It covers the authoritative graph-mapping cohort of 458 samples: 233 own samples and 225 Swedish samples.
+The first reusable profile monitors GAM duplicate removal for the *Fragaria vesca* pangenome project. It covers the authoritative graph-mapping cohort of 458 samples: 233 own samples and 225 Swedish samples. A second profile monitors the 455-sample linear-reference joint-calling workflow scattered into manifest-defined 250 kb intervals.
 
 ## Architecture
 
@@ -12,7 +12,9 @@ The implementation separates reusable infrastructure from scientific task knowle
 
 - `genomeagent/task_scanner.py` provides SSH collection, standard result envelopes, timestamped output directories and safe TSV writing.
 - `genomeagent/task_profiles/gam_deduplication.py` contains deterministic GAM-deduplication observation and status rules.
+- `genomeagent/task_profiles/scattered_joint_calling.py` models interval-table integrity, GenomicsDB prerequisites, atomic interval-output publication and scheduler state.
 - `config/tasks/gam_deduplication.json` records the expected datasets, candidate Puhti paths, sample counts and bounded log-scanning limits.
+- `config/tasks/scattered_joint_calling.json` records the current joint-calling paths, eight submission batches and the worker's atomic publication contract.
 - `scripts/task_scan.py` is the generic command-line entry point and profile registry.
 
 The remote observation is performed in one SSH session. The profile sends a Python program through standard input and receives one structured JSON observation. No GenomeAgent installation is required on Puhti.
@@ -82,6 +84,36 @@ When all 458 expected outputs have `EXACT_TEMPLATE_PAIR_MATCH` evidence, the nex
 
 Scheduler failures and log errors are associated with SLURM parent job IDs. Errors from a superseded attempt remain visible as historical provenance but do not change the status of a newer active attempt. Errors belonging to the current parent job still produce `running_with_warnings` or `attention_required`.
 
+## Running the scattered joint-calling scan
+
+Run the profile from the GenomeAgent repository on the Mac:
+
+```bash
+python3 scripts/task_scan.py scattered_joint_calling
+```
+
+Results are written under:
+
+```text
+workspace/task_scans/scattered_joint_calling/<UTC_TIMESTAMP>/
+```
+
+The authoritative task universe comes from `genotyped_scatter_250kb/intervals_250kb.tsv`. Each physical row is checked because the worker calculates `LINE=SLURM_ARRAY_TASK_ID+OFFSET`, reads that physical line with `sed`, and requires the table's `TASK` value to equal `LINE`. Blank or malformed rows, duplicate task IDs, duplicate output paths and TASK/line mismatches block a recommendation to submit more work.
+
+For every interval, the scanner checks the manifest-defined VCF and its index. The production worker writes into a task-specific temporary directory, verifies that the VCF and TBI are non-empty, checks VCF header readability and verifies 455 samples before moving the pair to its final paths. The profile therefore records a final non-empty VCF/index pair as `completed_atomic_publish_contract`. This is workflow-contract evidence, not an independent content scan: GenomeAgent deliberately does not launch `bcftools` once per interval while the scattered workflow is active.
+
+The joint-calling scan produces:
+
+- `scatter_summary.tsv`: combined sample, interval, workspace and scheduler counts.
+- `interval_status.tsv`: one row for every interval-table task.
+- `incomplete_intervals.tsv`: pending intervals and inconsistent VCF/index pairs.
+- `workspace_status.tsv`: the GenomicsDB workspace required by each chromosome label.
+- `running_jobs.tsv` and `recent_jobs.tsv`: relevant scheduler observations.
+- `scanned_paths.tsv`: configured path candidates and selected paths.
+- `recent_errors.txt`: error-like lines from bounded tails of recent logs.
+
+The sample count is derived from the selected sample map. The configured value 455 is only a fallback and a consistency expectation for the current linear-reference workflow. Interval progress, rather than the number of submitted batches, is authoritative because batches can be interrupted or retried.
+
 ## Safety and HPC impact
 
 The profile is read-only. It does not:
@@ -90,6 +122,7 @@ The profile is read-only. It does not:
 - write or remove files on Puhti;
 - read complete GAM contents;
 - run `vg stats`, `vg pack` or `vg call`;
+- run GATK or `bcftools`;
 - compute checksums across large files; or
 - perform residual-duplication QC while the main jobs are active.
 

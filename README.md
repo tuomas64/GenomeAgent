@@ -36,7 +36,7 @@ The architecture consists of three major components.
 
 The **Explorer** systematically observes research projects and their computing environments. It collects information about project structure, software, workflows, storage, and HPC resources without modifying the project.
 
-The reusable **Task Scanner Core** extends the Explorer with focused, knowledge-guided observation of active workflows. Task profiles deterministically compare manifests, expected outputs, scheduler state and validation evidence while remaining read-only. The first profile monitors GAM duplicate removal across the 458-sample *Fragaria vesca* graph-mapping cohort.
+The reusable **Task Scanner Core** extends the Explorer with focused, knowledge-guided observation of active workflows. Task profiles deterministically compare manifests, expected outputs, scheduler state and validation evidence while remaining read-only. Current profiles monitor GAM duplicate removal across the 458-sample *Fragaria vesca* graph-mapping cohort and interval-scattered GATK joint calling across the 455-sample linear-reference cohort.
 
 ### GenomeAgent Brain
 
@@ -79,7 +79,13 @@ Run the read-only GAM duplicate-removal profile from the GenomeAgent repository 
 python3 scripts/task_scan.py gam_deduplication
 ```
 
-The scanner connects through the `puhti` SSH alias and writes timestamped local reports under `workspace/task_scans/gam_deduplication/`. It does not submit jobs or read complete GAM contents. See the [Task Scanner Core documentation](docs/task_scanner_core.md) for configuration, outputs and safety boundaries.
+Monitor the 250 kb interval-scattered GenotypeGVCFs workflow with:
+
+```bash
+python3 scripts/task_scan.py scattered_joint_calling
+```
+
+The scanner connects through the `puhti` SSH alias and writes timestamped local reports under `workspace/task_scans/<profile>/`. It does not submit jobs or read complete GAM or VCF contents. See the [Task Scanner Core documentation](docs/task_scanner_core.md) for configuration, outputs and safety boundaries.
 
 ---
 

@@ -12,7 +12,10 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from genomeagent.task_profiles import GamDeduplicationProfile  # noqa: E402
+from genomeagent.task_profiles import (  # noqa: E402
+    GamDeduplicationProfile,
+    ScatteredJointCallingProfile,
+)
 from genomeagent.task_scanner import (  # noqa: E402
     SSHRemotePythonRunner,
     TaskScanError,
@@ -23,6 +26,7 @@ from genomeagent.task_scanner import (  # noqa: E402
 
 PROFILE_REGISTRY = {
     "gam_deduplication": GamDeduplicationProfile,
+    "scattered_joint_calling": ScatteredJointCallingProfile,
 }
 
 
