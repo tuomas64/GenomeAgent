@@ -120,8 +120,14 @@ class SSHRemotePythonRunner:
                 check=False,
             )
         except subprocess.TimeoutExpired as exc:
+            progress = exc.stderr or ""
+            if isinstance(progress, bytes):
+                progress = progress.decode("utf-8", errors="replace")
+            progress = str(progress).strip()[-2000:]
+            detail = f" Last remote progress:\n{progress}" if progress else ""
             raise TaskScanError(
                 f"Remote task scan timed out after {timeout_seconds}s on {self.host}."
+                f"{detail}"
             ) from exc
         except OSError as exc:
             raise TaskScanError(f"Could not start SSH for host {self.host}: {exc}") from exc

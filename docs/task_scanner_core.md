@@ -106,6 +106,8 @@ Interval output metadata is collected with one directory scan per parent directo
 
 Routine log opening is disabled for scattered joint-calling scans because even a small number of active Lustre log files can make a read-only observation exceed its time bound. Scheduler-confirmed failed intervals are instead written to `failed_intervals.tsv` with their exact `partN_<array-job>_<array-task>.out` and `.err` paths. Log contents can then be inspected as a separate, targeted diagnostic without delaying routine progress observation.
 
+Interval completion is discovered from manifest-defined VCF and index names in one directory enumeration per chromosome. The scanner deliberately avoids a separate metadata `stat` operation for every matching file: the worker publishes both names only after validating non-empty temporary outputs, so the configured atomic-publication contract makes the final name pair sufficient completion evidence. Remote phases also emit progress markers; if SSH reaches its overall timeout, the error reports the last phase reached.
+
 The eight submission scripts are represented explicitly in the profile configuration. Parts 1–6 contain 111 array tasks, part 7 covers rows 667–776 with 110 tasks and part 8 covers rows 777–886 with 110 tasks. The scanner expands active Slurm arrays and calculates the interval-table task as `array_task_id + offset`. Historical array tasks are mapped from `sacct`'s displayed `JobID`; `JobIDRaw` is retained only as scheduler provenance.
 
 Every interval receives one lifecycle state:

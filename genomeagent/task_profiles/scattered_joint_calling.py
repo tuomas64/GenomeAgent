@@ -17,6 +17,7 @@ import os
 import re
 import stat as stat_module
 import subprocess
+import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -99,6 +100,42 @@ def bulk_path_info(paths):
                     except Exception as exc:
                         for path in requested:
                             results[path]["error"] = str(exc)
+        except FileNotFoundError:
+            continue
+        except Exception as exc:
+            errors.append({"directory": parent, "error": str(exc)})
+    return results, errors
+
+
+def bulk_published_name_presence(paths):
+    """Find atomically published output names without per-file stat calls."""
+    normalized = sorted({str(Path(path)) for path in paths})
+    results = {
+        path: {
+            "path": path,
+            "exists": False,
+            "is_file": False,
+            "size_bytes": None,
+            "mtime": None,
+        }
+        for path in normalized
+    }
+    grouped = {}
+    for path in normalized:
+        source = Path(path)
+        grouped.setdefault(str(source.parent), {}).setdefault(source.name, []).append(path)
+
+    errors = []
+    for parent, names in grouped.items():
+        try:
+            with os.scandir(parent) as entries:
+                for entry in entries:
+                    requested = names.get(entry.name)
+                    if not requested:
+                        continue
+                    for path in requested:
+                        results[path]["exists"] = True
+                        results[path]["is_file"] = True
         except FileNotFoundError:
             continue
         except Exception as exc:
@@ -189,13 +226,16 @@ def resolve_output_path(value, outbase):
     return candidate
 
 
-def inspect_outputs_bulk(vcfs, index_suffixes):
+def inspect_outputs_bulk(vcfs, index_suffixes, discovery_mode="atomic_name_pair"):
     normalized_vcfs = sorted({str(Path(vcf)) for vcf in vcfs})
     suffixes = list(index_suffixes) or [".tbi"]
     requested = list(normalized_vcfs)
     for vcf in normalized_vcfs:
         requested.extend(vcf + suffix for suffix in suffixes)
-    infos, errors = bulk_path_info(requested)
+    if discovery_mode == "atomic_name_pair":
+        infos, errors = bulk_published_name_presence(requested)
+    else:
+        infos, errors = bulk_path_info(requested)
 
     outputs = {}
     for vcf in normalized_vcfs:
@@ -204,12 +244,20 @@ def inspect_outputs_bulk(vcfs, index_suffixes):
         selected_index = index_candidates[0]
         for candidate in index_candidates:
             info = infos[candidate]
-            if info["is_file"] and (info["size_bytes"] or 0) > 0:
+            if info["is_file"] and (
+                discovery_mode == "atomic_name_pair" or (info["size_bytes"] or 0) > 0
+            ):
                 selected_index = candidate
                 break
         index_info = infos[selected_index]
-        vcf_nonzero = bool(vcf_info["is_file"] and (vcf_info["size_bytes"] or 0) > 0)
-        index_nonzero = bool(index_info["is_file"] and (index_info["size_bytes"] or 0) > 0)
+        vcf_nonzero = bool(
+            vcf_info["is_file"]
+            and (discovery_mode == "atomic_name_pair" or (vcf_info["size_bytes"] or 0) > 0)
+        )
+        index_nonzero = bool(
+            index_info["is_file"]
+            and (discovery_mode == "atomic_name_pair" or (index_info["size_bytes"] or 0) > 0)
+        )
 
         if vcf_nonzero and index_nonzero:
             state = "completed_atomic_publish_contract"
@@ -223,18 +271,19 @@ def inspect_outputs_bulk(vcfs, index_suffixes):
         outputs[vcf] = {
             "state": state,
             "vcf": vcf,
-            "vcf_exists_nonzero": vcf_nonzero,
+            "vcf_published": vcf_nonzero,
             "vcf_size_bytes": vcf_info.get("size_bytes"),
             "vcf_mtime": vcf_info.get("mtime"),
             "index": selected_index,
-            "index_exists_nonzero": index_nonzero,
+            "index_published": index_nonzero,
             "index_size_bytes": index_info.get("size_bytes"),
             "index_mtime": index_info.get("mtime"),
+            "discovery_mode": discovery_mode,
         }
     return outputs, errors
 
 
-def read_interval_table(path, outbase, index_suffixes):
+def read_interval_table(path, outbase, index_suffixes, discovery_mode):
     result = {
         "path": str(path or ""),
         "exists": False,
@@ -322,7 +371,9 @@ def read_interval_table(path, outbase, index_suffixes):
         if len(tasks) > 1
     ]
     outputs, output_errors = inspect_outputs_bulk(
-        [record["vcf"] for record in result["records"]], index_suffixes
+        [record["vcf"] for record in result["records"]],
+        index_suffixes,
+        discovery_mode,
     )
     for record in result["records"]:
         record.update(outputs[record["vcf"]])
@@ -585,17 +636,26 @@ def inspect_logs(patterns, max_files, max_bytes, allowed_parent_ids=None):
     }
 
 
-def inspect_final_candidates(patterns, index_suffixes):
+def inspect_final_candidates(patterns, index_suffixes, discovery_mode):
     paths = []
     for pattern in patterns:
         paths.extend(glob.glob(pattern))
-    outputs, _ = inspect_outputs_bulk(paths, index_suffixes)
+    outputs, _ = inspect_outputs_bulk(paths, index_suffixes, discovery_mode)
     return [outputs[path] for path in sorted(outputs)]
+
+
+def phase_trace(name, event):
+    print(
+        "GENOMEAGENT_PHASE %s %s %s" % (name, event, now_local_iso()),
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 scan_started = time.monotonic()
 timings = {}
 
+phase_trace("path_selection", "start")
 phase_started = time.monotonic()
 scanned_paths = []
 joint_dir = select_candidate(
@@ -613,16 +673,25 @@ interval_path = select_candidate(interval_candidates, "interval_table", "file", 
 reference_candidates = [format_value(x, context) for x in cfg.get("reference_candidates", [])]
 reference_path = select_candidate(reference_candidates, "reference", "file", scanned_paths)
 timings["path_selection"] = round(time.monotonic() - phase_started, 3)
+phase_trace("path_selection", "done")
 
+phase_trace("sample_map", "start")
 phase_started = time.monotonic()
 sample_map = read_sample_map(sample_map_path)
 timings["sample_map"] = round(time.monotonic() - phase_started, 3)
+phase_trace("sample_map", "done")
 
+phase_trace("interval_table_and_outputs", "start")
 phase_started = time.monotonic()
 index_suffixes = cfg.get("index_suffixes", [".tbi", ".csi"])
-interval_table = read_interval_table(interval_path, outbase, index_suffixes)
+discovery_mode = cfg.get("interval_output_discovery", "atomic_name_pair")
+interval_table = read_interval_table(
+    interval_path, outbase, index_suffixes, discovery_mode
+)
 timings["interval_table_and_outputs"] = round(time.monotonic() - phase_started, 3)
+phase_trace("interval_table_and_outputs", "done")
 
+phase_trace("genomicsdb_workspaces", "start")
 phase_started = time.monotonic()
 workspaces = inspect_workspaces(
     interval_table["records"],
@@ -630,14 +699,20 @@ workspaces = inspect_workspaces(
     cfg.get("workspace_template", "{joint_dir}/GenomicsDB_chr{chromosome}"),
 )
 timings["genomicsdb_workspaces"] = round(time.monotonic() - phase_started, 3)
+phase_trace("genomicsdb_workspaces", "done")
 
 log_patterns = [format_value(x, context) for x in cfg.get("log_globs", [])]
 final_patterns = [format_value(x, context) for x in cfg.get("final_vcf_globs", [])]
 
+phase_trace("final_candidates", "start")
 phase_started = time.monotonic()
-final_candidates = inspect_final_candidates(final_patterns, index_suffixes)
+final_candidates = inspect_final_candidates(
+    final_patterns, index_suffixes, discovery_mode
+)
 timings["final_candidates"] = round(time.monotonic() - phase_started, 3)
+phase_trace("final_candidates", "done")
 
+phase_trace("scheduler", "start")
 phase_started = time.monotonic()
 jobs = scheduler_observation(
     cfg.get("user", ""),
@@ -646,7 +721,9 @@ jobs = scheduler_observation(
     int(cfg.get("recent_job_days", 7)),
 )
 timings["scheduler"] = round(time.monotonic() - phase_started, 3)
+phase_trace("scheduler", "done")
 
+phase_trace("logs", "start")
 phase_started = time.monotonic()
 log_scan_policy = cfg.get("log_scan_policy", "bounded_recent")
 failed_parent_ids = {
@@ -668,6 +745,7 @@ logs = inspect_logs(
 logs["configured_policy"] = log_scan_policy
 logs["failed_scheduler_parent_ids"] = sorted(failed_parent_ids)
 timings["logs"] = round(time.monotonic() - phase_started, 3)
+phase_trace("logs", "done")
 timings["total"] = round(time.monotonic() - scan_started, 3)
 
 result = {
@@ -702,9 +780,12 @@ result = {
         "bcftools_run": False,
         "checksums_computed": False,
         "scheduler_observation_only": True,
+        "interval_output_discovery": discovery_mode,
+        "per_interval_output_stat": discovery_mode != "atomic_name_pair",
     },
 }
 
+phase_trace("json_serialization", "start")
 print(json.dumps(result, separators=(",", ":")))
 '''
 
@@ -735,6 +816,12 @@ def validate_config(config: Mapping[str, Any]) -> None:
     fallback = config.get("expected_samples_fallback")
     if fallback is not None and (not isinstance(fallback, int) or fallback <= 0):
         raise TaskScanError("expected_samples_fallback must be a positive integer")
+
+    discovery_mode = config.get("interval_output_discovery", "atomic_name_pair")
+    if discovery_mode not in {"atomic_name_pair", "nonzero_metadata"}:
+        raise TaskScanError(
+            "interval_output_discovery must be atomic_name_pair or nonzero_metadata"
+        )
 
     batches = config.get("scatter_batches")
     if not isinstance(batches, list) or not batches:
@@ -1198,11 +1285,12 @@ class ScatteredJointCallingProfile:
             "invalid_scheduler_mappings": classification["invalid_scheduler_mappings"],
             "warnings": warnings,
             "validation_boundary": (
-                "A non-empty final interval VCF/index pair is accepted as completed under the "
-                "configured atomic publication contract: the worker validates the temporary VCF "
-                "header and sample count before moving both files to their final paths. The scanner "
-                "does not independently rerun bcftools across every interval. Scheduler state is "
-                "mapped with batch-specific array offsets; routine scans do not open log files."
+                "A final interval VCF/index name pair is accepted as completed under the configured "
+                "atomic publication contract: the worker validates non-empty temporary files, the "
+                "VCF header and sample count before moving both names to their final paths. The "
+                "scanner therefore avoids per-file stat calls and does not independently rerun "
+                "bcftools across every interval. Scheduler state is mapped with batch-specific "
+                "array offsets; routine scans do not open log files."
             ),
             "expected_batches": config.get("expected_batches"),
         }
@@ -1225,8 +1313,8 @@ class ScatteredJointCallingProfile:
                 "contig", "start", "end", "interval", "lifecycle_state",
                 "output_state", "scheduler_job_id", "scheduler_parent_job_id",
                 "scheduler_array_task_id", "scheduler_state", "scheduler_source",
-                "vcf", "vcf_exists_nonzero", "vcf_size_bytes", "vcf_mtime",
-                "index", "index_exists_nonzero", "index_size_bytes", "index_mtime",
+                "vcf", "vcf_published", "vcf_size_bytes", "vcf_mtime",
+                "index", "index_published", "index_size_bytes", "index_mtime",
                 "stdout_log", "stderr_log",
             ],
         )

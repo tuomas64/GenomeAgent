@@ -1,5 +1,5 @@
 {
-  "profile_version": "2.0",
+  "profile_version": "2.1",
   "project_root": "/scratch/project_2001113",
   "account": "project_2001113",
   "user": "tuomas64",
@@ -8,6 +8,7 @@
   "max_recent_log_files": 0,
   "max_log_tail_bytes": 65536,
   "log_scan_policy": "disabled_routine_scan",
+  "interval_output_discovery": "atomic_name_pair",
   "expected_samples_fallback": 455,
   "expected_batches": 8,
   "joint_dir_candidates": [

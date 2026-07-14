@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from genomeagent.task_scanner import TaskScanError, TaskScannerCore, write_tsv
+from genomeagent.task_scanner import (
+    SSHRemotePythonRunner,
+    TaskScanError,
+    TaskScannerCore,
+    write_tsv,
+)
 
 
 class FakeRunner:
@@ -39,6 +46,19 @@ class FakeProfile:
 
 
 class TaskScannerCoreTests(unittest.TestCase):
+    def test_remote_timeout_reports_last_phase_marker(self):
+        expired = subprocess.TimeoutExpired(
+            cmd=["ssh", "puhti"],
+            timeout=240,
+            stderr=b"GENOMEAGENT_PHASE scheduler start 2026-07-14T22:00:00+0300\n",
+        )
+        with patch("genomeagent.task_scanner.subprocess.run", side_effect=expired):
+            with self.assertRaisesRegex(
+                TaskScanError,
+                "(?s)Last remote progress.*scheduler start",
+            ):
+                SSHRemotePythonRunner("puhti").run_python("fixture")
+
     def test_core_writes_standard_bundle_without_overwriting(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

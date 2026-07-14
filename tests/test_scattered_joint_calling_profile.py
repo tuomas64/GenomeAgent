@@ -129,6 +129,16 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
             self.assertTrue(all(item["nonempty"] for item in observation["workspaces"]))
             self.assertFalse(observation["io_policy"]["vcf_content_read"])
             self.assertFalse(observation["io_policy"]["bcftools_run"])
+            self.assertEqual(
+                observation["io_policy"]["interval_output_discovery"],
+                "atomic_name_pair",
+            )
+            self.assertFalse(observation["io_policy"]["per_interval_output_stat"])
+            completed_record = next(
+                row for row in observation["interval_table"]["records"]
+                if row["task"] == 1
+            )
+            self.assertIsNone(completed_record["vcf_size_bytes"])
             self.assertIn("interval_table_and_outputs", observation["timings_seconds"])
             self.assertIn("total", observation["timings_seconds"])
             self.assertEqual(observation["interval_table"]["output_scan_errors"], [])
@@ -412,6 +422,7 @@ class ScatteredJointCallingProfileTests(unittest.TestCase):
         self.assertEqual(config["index_suffixes"], [".tbi"])
         self.assertEqual(config["max_recent_log_files"], 0)
         self.assertEqual(config["log_scan_policy"], "disabled_routine_scan")
+        self.assertEqual(config["interval_output_discovery"], "atomic_name_pair")
         self.assertIn("gtscatter", config["job_name_patterns"])
         coverage = []
         for batch in config["scatter_batches"]:
