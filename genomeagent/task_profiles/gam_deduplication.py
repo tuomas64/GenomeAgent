@@ -83,16 +83,12 @@ def normalize_sample(value):
     return name
 
 
-def list_gams(directory):
+def index_gams(paths):
     result = {"records": {}, "duplicates": [], "errors": []}
-    if not directory:
-        return result
-    root = Path(directory)
-    if not root.exists() or not root.is_dir():
-        return result
     grouped = {}
     try:
-        for path in root.iterdir():
+        for path in paths:
+            path = Path(path)
             if not path.is_file() or not path.name.lower().endswith(".gam"):
                 continue
             sample = normalize_sample(path.name)
@@ -107,6 +103,78 @@ def list_gams(directory):
             })
     except Exception as exc:
         result["errors"].append(str(exc))
+
+    for sample, records in sorted(grouped.items()):
+        records.sort(key=lambda row: row["path"])
+        result["records"][sample] = records[0]
+        if len(records) > 1:
+            result["duplicates"].append({
+                "sample": sample,
+                "paths": [record["path"] for record in records],
+            })
+    return result
+
+
+def list_gams(directory):
+    if not directory:
+        return index_gams([])
+    root = Path(directory)
+    if not root.exists() or not root.is_dir():
+        return index_gams([])
+    try:
+        return index_gams(root.iterdir())
+    except Exception as exc:
+        result = index_gams([])
+        result["errors"].append(str(exc))
+        return result
+
+
+def list_gams_from_patterns(patterns):
+    matches = []
+    for pattern in patterns:
+        matches.extend(glob.glob(pattern))
+    return index_gams(sorted(set(matches)))
+
+
+def normalize_summary_sample(path):
+    name = Path(path).name
+    suffix = ".dedup_summary.tsv"
+    if name.lower().endswith(suffix):
+        return name[: -len(suffix)]
+    return normalize_sample(name)
+
+
+def list_validation_summaries(patterns, max_bytes=262144):
+    result = {"records": {}, "duplicates": [], "errors": []}
+    matches = []
+    for pattern in patterns:
+        matches.extend(glob.glob(pattern))
+
+    grouped = {}
+    for path in sorted(set(matches)):
+        try:
+            summary = Path(path)
+            if not summary.is_file():
+                continue
+            stat = summary.stat()
+            with summary.open("rb") as handle:
+                text = handle.read(max_bytes).decode("utf-8", errors="replace")
+            sample = normalize_summary_sample(path)
+            grouped.setdefault(sample, []).append({
+                "path": str(summary),
+                "size_bytes": stat.st_size,
+                "mtime": time.strftime(
+                    "%Y-%m-%dT%H:%M:%S%z", time.localtime(stat.st_mtime)
+                ),
+                "exact_template_pair_match": "EXACT_TEMPLATE_PAIR_MATCH" in text,
+                "validation_status": (
+                    "EXACT_TEMPLATE_PAIR_MATCH"
+                    if "EXACT_TEMPLATE_PAIR_MATCH" in text
+                    else "summary_present_without_exact_match"
+                ),
+            })
+        except Exception as exc:
+            result["errors"].append(f"{path}: {exc}")
 
     for sample, records in sorted(grouped.items()):
         records.sort(key=lambda row: row["path"])
@@ -280,6 +348,13 @@ COMPLETION_PATTERN = re.compile(
     r"completed successfully|deduplication complete)",
     re.IGNORECASE,
 )
+JOB_ID_PATTERN = re.compile(r"(?<!\d)(\d{6,}(?:_\d+)?)(?!\d)")
+
+
+def job_identity(value):
+    match = JOB_ID_PATTERN.search(str(value))
+    job_id = match.group(1) if match else ""
+    return job_id, job_id.split("_", 1)[0] if job_id else ""
 
 
 def scan_logs(patterns, max_files, max_bytes, scanned_paths):
@@ -314,9 +389,21 @@ def scan_logs(patterns, max_files, max_bytes, scanned_paths):
             if COMPLETION_PATTERN.search(line):
                 completion_lines.append(line[-1000:])
         if error_lines:
-            errors.append({"path": path, "matched_lines": error_lines[-30:]})
+            job_id, parent_job_id = job_identity(path)
+            errors.append({
+                "path": path,
+                "job_id": job_id,
+                "parent_job_id": parent_job_id,
+                "matched_lines": error_lines[-30:],
+            })
         if completion_lines:
-            completions.append({"path": path, "matched_lines": completion_lines[-30:]})
+            job_id, parent_job_id = job_identity(path)
+            completions.append({
+                "path": path,
+                "job_id": job_id,
+                "parent_job_id": parent_job_id,
+                "matched_lines": completion_lines[-30:],
+            })
 
     return {
         "files_considered": len(candidates),
@@ -364,8 +451,10 @@ def scan_jobs(user, account, patterns):
                 continue
             job_id, job_account, name, state, elapsed, time_limit, reason = fields
             if relevant_name(name, patterns) and (not account or job_account == account):
+                _, parent_job_id = job_identity(job_id)
                 running.append({
                     "job_id": job_id,
+                    "parent_job_id": parent_job_id,
                     "account": job_account,
                     "name": name,
                     "state": state,
@@ -386,8 +475,10 @@ def scan_jobs(user, account, patterns):
                 continue
             job_id, job_account, name, state, elapsed, exit_code = fields
             if relevant_name(name, patterns) and (not account or job_account == account):
+                _, parent_job_id = job_identity(job_id)
                 recent.append({
                     "job_id": job_id,
+                    "parent_job_id": parent_job_id,
                     "account": job_account,
                     "name": name,
                     "state": state,
@@ -425,13 +516,16 @@ def scan_dataset(spec, project_root, scanned_paths):
         "dataset": name,
     }
     worker_patterns = expand_patterns(spec.get("worker_manifest_globs", []), values)
+    output_patterns = expand_patterns(spec.get("output_gam_globs", []), values)
+    summary_patterns = expand_patterns(spec.get("summary_globs", []), values)
     assignments, worker_manifests = discover_worker_assignments(
         worker_patterns, name, scanned_paths
     )
 
     manifest = parse_manifest(manifest_path)
     input_gams = list_gams(input_dir)
-    output_gams = list_gams(output_dir)
+    output_gams = list_gams_from_patterns(output_patterns)
+    summaries = list_validation_summaries(summary_patterns)
 
     manifest_by_sample = {}
     for record in manifest["records"]:
@@ -440,6 +534,7 @@ def scan_dataset(spec, project_root, scanned_paths):
     universe = set(manifest_by_sample)
     universe.update(input_gams["records"])
     universe.update(output_gams["records"])
+    universe.update(summaries["records"])
     universe.update(assignments)
 
     samples = []
@@ -447,6 +542,7 @@ def scan_dataset(spec, project_root, scanned_paths):
         manifest_record = manifest_by_sample.get(sample, {})
         input_record = input_gams["records"].get(sample)
         output_record = output_gams["records"].get(sample)
+        summary_record = summaries["records"].get(sample)
 
         input_path = (input_record or {}).get("path") or manifest_record.get("input_gam", "")
         output_path = (output_record or {}).get("path") or manifest_record.get("output_gam", "")
@@ -461,10 +557,18 @@ def scan_dataset(spec, project_root, scanned_paths):
             info = path_info(output_path)
             output_exists = bool(info["is_file"] and (info["size_bytes"] or 0) > 0)
 
-        if output_exists:
+        exact_match = bool(
+            summary_record and summary_record.get("exact_template_pair_match")
+        )
+
+        if output_exists and exact_match:
+            state = "completed_exact_template_pair_match"
+        elif output_exists:
             state = "output_present_unvalidated"
+        elif summary_record:
+            state = "summary_present_output_missing"
         elif not input_exists:
-            state = "missing_input"
+            state = "missing_input_no_completion_evidence"
         elif sample in assignments:
             state = "assigned_pending_or_running"
         else:
@@ -479,6 +583,13 @@ def scan_dataset(spec, project_root, scanned_paths):
             "output_gam": output_path,
             "output_exists_nonzero": output_exists,
             "output_size_bytes": (output_record or {}).get("size_bytes"),
+            "summary": (summary_record or {}).get("path", ""),
+            "summary_exists": bool(summary_record),
+            "validation_status": (summary_record or {}).get("validation_status", ""),
+            "exact_template_pair_match": exact_match,
+            "source_input_deleted_after_success": bool(
+                not input_exists and output_exists and exact_match
+            ),
             "worker_manifests": assignments.get(sample, []),
             "in_master_manifest": sample in manifest_by_sample,
         })
@@ -487,8 +598,23 @@ def scan_dataset(spec, project_root, scanned_paths):
         "expected_samples": expected,
         "samples_observed": len(samples),
         "input_gams_nonzero": sum(row["input_exists_nonzero"] for row in samples),
-        "outputs_present_unvalidated": sum(row["output_exists_nonzero"] for row in samples),
-        "missing_inputs": sum(row["state"] == "missing_input" for row in samples),
+        "outputs_present": sum(row["output_exists_nonzero"] for row in samples),
+        "outputs_validated_exact_match": sum(
+            row["state"] == "completed_exact_template_pair_match" for row in samples
+        ),
+        "outputs_present_unvalidated": sum(
+            row["state"] == "output_present_unvalidated" for row in samples
+        ),
+        "validation_summaries": sum(row["summary_exists"] for row in samples),
+        "source_inputs_deleted_after_success": sum(
+            row["source_input_deleted_after_success"] for row in samples
+        ),
+        "missing_inputs": sum(
+            row["state"] == "missing_input_no_completion_evidence" for row in samples
+        ),
+        "summary_present_output_missing": sum(
+            row["state"] == "summary_present_output_missing" for row in samples
+        ),
         "assigned_without_output": sum(
             row["state"] == "assigned_pending_or_running" for row in samples
         ),
@@ -504,6 +630,8 @@ def scan_dataset(spec, project_root, scanned_paths):
             "input_dir": input_dir or "",
             "output_dir": output_dir or "",
             "manifest": manifest_path or "",
+            "output_gam_globs": output_patterns,
+            "summary_globs": summary_patterns,
         },
         "counts": counts,
         "manifest": {
@@ -516,7 +644,10 @@ def scan_dataset(spec, project_root, scanned_paths):
         "worker_manifests": worker_manifests,
         "input_duplicate_ids": input_gams["duplicates"],
         "output_duplicate_ids": output_gams["duplicates"],
-        "directory_errors": input_gams["errors"] + output_gams["errors"],
+        "summary_duplicate_ids": summaries["duplicates"],
+        "directory_errors": (
+            input_gams["errors"] + output_gams["errors"] + summaries["errors"]
+        ),
         "samples": samples,
     }
 
@@ -540,16 +671,16 @@ def main():
         }
         log_patterns.extend(expand_patterns(spec.get("log_globs", []), values))
 
+    jobs = scan_jobs(
+        CONFIG.get("user", "tuomas64"),
+        CONFIG.get("account", ""),
+        CONFIG.get("job_name_patterns", ["dedup"]),
+    )
     logs = scan_logs(
         log_patterns,
         int(CONFIG.get("max_recent_log_files", 40)),
         int(CONFIG.get("max_log_tail_bytes", 65536)),
         scanned_paths,
-    )
-    jobs = scan_jobs(
-        CONFIG.get("user", "tuomas64"),
-        CONFIG.get("account", ""),
-        CONFIG.get("job_name_patterns", ["dedup"]),
     )
 
     observation = {
@@ -563,8 +694,12 @@ def main():
             "gam_content_read": False,
             "checksums_computed": False,
             "vg_stats_run": False,
+            "small_validation_summaries_read": True,
             "log_tail_bytes_per_file": int(CONFIG.get("max_log_tail_bytes", 65536)),
-            "note": "Only directory metadata, manifests, scheduler state and bounded log tails were read.",
+            "note": (
+                "Only directory metadata, manifests, small deduplication summaries, "
+                "scheduler state and bounded log tails were read."
+            ),
         },
     }
     print(json.dumps(observation, separators=(",", ":")))
@@ -603,6 +738,8 @@ def validate_config(config: Mapping[str, Any]) -> None:
         for field in (
             "input_dir_candidates",
             "output_dir_candidates",
+            "output_gam_globs",
+            "summary_globs",
             "manifest_candidates",
             "worker_manifest_globs",
             "log_globs",
@@ -635,10 +772,26 @@ class GamDeduplicationProfile:
         recent_jobs = list(data.get("jobs", {}).get("recent", []))
         error_hits = list(data.get("logs", {}).get("error_hits", []))
 
+        def parent_number(job: Mapping[str, Any]) -> int:
+            value = str(job.get("parent_job_id", ""))
+            return int(value) if value.isdigit() else -1
+
         expected_total = sum(int(item.get("expected_samples", 0)) for item in datasets)
         observed_total = sum(int(item.get("counts", {}).get("samples_observed", 0)) for item in datasets)
         output_total = sum(
+            int(item.get("counts", {}).get("outputs_present", 0))
+            for item in datasets
+        )
+        validated_total = sum(
+            int(item.get("counts", {}).get("outputs_validated_exact_match", 0))
+            for item in datasets
+        )
+        unvalidated_total = sum(
             int(item.get("counts", {}).get("outputs_present_unvalidated", 0))
+            for item in datasets
+        )
+        consumed_total = sum(
+            int(item.get("counts", {}).get("source_inputs_deleted_after_success", 0))
             for item in datasets
         )
         missing_total = sum(
@@ -646,9 +799,36 @@ class GamDeduplicationProfile:
         )
 
         failed_states = ("FAILED", "OUT_OF_MEMORY", "TIMEOUT", "CANCELLED", "NODE_FAIL")
-        failed_jobs = [
+        all_failed_jobs = [
             job for job in recent_jobs
             if any(str(job.get("state", "")).upper().startswith(state) for state in failed_states)
+        ]
+
+        latest_parent_by_name = {}
+        for job in [*recent_jobs, *running_jobs]:
+            name = str(job.get("name", ""))
+            parent = parent_number(job)
+            if name and parent >= 0:
+                latest_parent_by_name[name] = max(latest_parent_by_name.get(name, -1), parent)
+
+        current_failed_jobs = [
+            job for job in all_failed_jobs
+            if parent_number(job) == latest_parent_by_name.get(str(job.get("name", "")), -2)
+        ]
+        historical_failed_jobs = [
+            job for job in all_failed_jobs if job not in current_failed_jobs
+        ]
+        current_attempt_parents = {
+            str(job.get("parent_job_id", ""))
+            for job in [*running_jobs, *current_failed_jobs]
+            if job.get("parent_job_id")
+        }
+        current_error_hits = [
+            hit for hit in error_hits
+            if not hit.get("parent_job_id") or hit.get("parent_job_id") in current_attempt_parents
+        ]
+        historical_error_hits = [
+            hit for hit in error_hits if hit not in current_error_hits
         ]
 
         dataset_statuses = []
@@ -656,13 +836,19 @@ class GamDeduplicationProfile:
         for dataset in datasets:
             counts = dataset.get("counts", {})
             expected = int(dataset.get("expected_samples", 0))
-            outputs = int(counts.get("outputs_present_unvalidated", 0))
+            outputs = int(counts.get("outputs_present", 0))
+            validated = int(counts.get("outputs_validated_exact_match", 0))
+            unvalidated = int(counts.get("outputs_present_unvalidated", 0))
+            consumed = int(counts.get("source_inputs_deleted_after_success", 0))
+            missing_output = int(counts.get("summary_present_output_missing", 0))
             missing = int(counts.get("missing_inputs", 0))
             inputs = int(counts.get("input_gams_nonzero", 0))
             observed = int(counts.get("samples_observed", 0))
 
-            if outputs == expected and expected > 0:
-                state = "ready_for_content_validation"
+            if validated == expected and expected > 0:
+                state = "validated_exact_template_pair_match"
+            elif running_jobs and (current_error_hits or current_failed_jobs):
+                state = "running_with_warnings"
             elif missing:
                 state = "blocked_missing_inputs"
             elif observed or inputs or outputs:
@@ -675,7 +861,10 @@ class GamDeduplicationProfile:
                 "status": state,
                 "expected_samples": expected,
                 "input_gams_nonzero": inputs,
-                "outputs_present_unvalidated": outputs,
+                "outputs_present": outputs,
+                "outputs_validated_exact_match": validated,
+                "outputs_present_unvalidated": unvalidated,
+                "source_inputs_deleted_after_success": consumed,
                 "missing_inputs": missing,
             })
 
@@ -705,22 +894,30 @@ class GamDeduplicationProfile:
                 warnings.append(
                     f"{dataset.get('name')}: multiple output GAM files normalize to the same sample ID."
                 )
+            if dataset.get("summary_duplicate_ids"):
+                warnings.append(
+                    f"{dataset.get('name')}: multiple validation summaries normalize to the same sample ID."
+                )
+            if missing_output:
+                warnings.append(
+                    f"{dataset.get('name')}: {missing_output} validation summaries have no output GAM."
+                )
 
         all_ready = bool(dataset_statuses) and all(
-            item["status"] == "ready_for_content_validation"
+            item["status"] == "validated_exact_template_pair_match"
             for item in dataset_statuses
         )
 
         if all_ready:
-            overall = "ready_for_content_validation"
-            next_action = "validate_deduplicated_gams_before_vg_pack"
-        elif running_jobs and (error_hits or failed_jobs):
+            overall = "deduplication_validated"
+            next_action = "review_residual_duplication_qc_before_vg_pack"
+        elif running_jobs and (current_error_hits or current_failed_jobs):
             overall = "running_with_warnings"
-            next_action = "inspect_recent_errors_while_other_workers_continue"
+            next_action = "inspect_current_attempt_errors_while_other_workers_continue"
         elif running_jobs:
             overall = "running"
             next_action = "wait_and_rescan"
-        elif error_hits or failed_jobs:
+        elif current_error_hits or current_failed_jobs:
             overall = "attention_required"
             next_action = "inspect_errors_and_prepare_only_failed_samples_for_rerun"
         elif missing_total:
@@ -733,15 +930,17 @@ class GamDeduplicationProfile:
             overall = "not_started_or_paths_not_found"
             next_action = "verify_configured_paths"
 
-        if error_hits:
+        if current_error_hits:
             warnings.append(
-                f"Bounded tails of recent logs contain {len(error_hits)} error-like hit groups."
+                f"Current-attempt logs contain {len(current_error_hits)} error-like hit groups."
             )
-        if failed_jobs:
-            warnings.append(f"Scheduler history contains {len(failed_jobs)} failed job records.")
-        if output_total:
+        if current_failed_jobs:
             warnings.append(
-                "Output counts are metadata-only completion candidates; GAM content is not yet validated."
+                f"The latest scheduler attempts contain {len(current_failed_jobs)} failed job records."
+            )
+        if unvalidated_total:
+            warnings.append(
+                f"{unvalidated_total} output GAMs do not yet have EXACT_TEMPLATE_PAIR_MATCH evidence."
             )
 
         return {
@@ -751,17 +950,35 @@ class GamDeduplicationProfile:
             "counts": {
                 "expected_samples": expected_total,
                 "samples_observed": observed_total,
-                "outputs_present_unvalidated": output_total,
+                "outputs_present": output_total,
+                "outputs_validated_exact_match": validated_total,
+                "outputs_present_unvalidated": unvalidated_total,
+                "source_inputs_deleted_after_success": consumed_total,
                 "missing_inputs": missing_total,
                 "running_relevant_jobs": len(running_jobs),
-                "recent_failed_job_records": len(failed_jobs),
-                "recent_error_hit_groups": len(error_hits),
+                "current_failed_job_records": len(current_failed_jobs),
+                "historical_failed_job_records": len(historical_failed_jobs),
+                "current_error_hit_groups": len(current_error_hits),
+                "historical_error_hit_groups": len(historical_error_hits),
             },
             "datasets": dataset_statuses,
             "warnings": warnings,
+            "current_events": {
+                "failed_jobs": current_failed_jobs,
+                "error_hits": current_error_hits,
+            },
+            "historical_events": {
+                "failed_jobs": historical_failed_jobs,
+                "error_hits": historical_error_hits,
+                "note": (
+                    "Historical or superseded failures are retained for provenance but do not "
+                    "change the status of a newer active attempt."
+                ),
+            },
             "validation_boundary": (
-                "A non-empty output GAM is counted only as present. Content-level validation, "
-                "duplicate-template accounting and residual-duplication QC remain separate steps."
+                "A non-empty output GAM with an EXACT_TEMPLATE_PAIR_MATCH deduplication summary "
+                "is accepted as validated duplicate-template accounting. Residual-duplication "
+                "QC remains a separate step before vg pack and vg call."
             ),
         }
 
@@ -779,7 +996,9 @@ class GamDeduplicationProfile:
             status["datasets"],
             [
                 "dataset", "status", "expected_samples", "input_gams_nonzero",
-                "outputs_present_unvalidated", "missing_inputs",
+                "outputs_present", "outputs_validated_exact_match",
+                "outputs_present_unvalidated", "source_inputs_deleted_after_success",
+                "missing_inputs",
             ],
         )
 
@@ -794,12 +1013,15 @@ class GamDeduplicationProfile:
             [
                 "dataset", "sample", "state", "input_gam", "input_exists_nonzero",
                 "input_size_bytes", "output_gam", "output_exists_nonzero",
-                "output_size_bytes", "worker_manifests", "in_master_manifest",
+                "output_size_bytes", "summary", "summary_exists", "validation_status",
+                "exact_template_pair_match", "source_input_deleted_after_success",
+                "worker_manifests", "in_master_manifest",
             ],
         )
 
         missing_rows = [
-            row for row in sample_rows if row.get("state") == "missing_input"
+            row for row in sample_rows
+            if row.get("state") == "missing_input_no_completion_evidence"
         ]
         missing_inputs_path = scan_dir / "missing_inputs.tsv"
         write_tsv(
@@ -812,14 +1034,17 @@ class GamDeduplicationProfile:
         write_tsv(
             running_jobs_path,
             observation.get("jobs", {}).get("running", []),
-            ["job_id", "account", "name", "state", "elapsed", "time_limit", "reason"],
+            [
+                "job_id", "parent_job_id", "account", "name", "state",
+                "elapsed", "time_limit", "reason",
+            ],
         )
 
         recent_jobs_path = scan_dir / "recent_jobs.tsv"
         write_tsv(
             recent_jobs_path,
             observation.get("jobs", {}).get("recent", []),
-            ["job_id", "account", "name", "state", "elapsed", "exit_code"],
+            ["job_id", "parent_job_id", "account", "name", "state", "elapsed", "exit_code"],
         )
 
         scanned_paths_path = scan_dir / "scanned_paths.tsv"
@@ -834,10 +1059,15 @@ class GamDeduplicationProfile:
 
         errors_path = scan_dir / "recent_errors.txt"
         error_lines = []
-        for hit in observation.get("logs", {}).get("error_hits", []):
-            error_lines.extend(["=" * 80, hit.get("path", "")])
-            error_lines.extend(hit.get("matched_lines", []))
-            error_lines.append("")
+        current_hits = status.get("current_events", {}).get("error_hits", [])
+        historical_hits = status.get("historical_events", {}).get("error_hits", [])
+        for label, hits in (("CURRENT ATTEMPT", current_hits), ("HISTORICAL", historical_hits)):
+            if hits:
+                error_lines.extend(["#" * 80, label, ""])
+            for hit in hits:
+                error_lines.extend(["=" * 80, hit.get("path", "")])
+                error_lines.extend(hit.get("matched_lines", []))
+                error_lines.append("")
         errors_path.write_text("\n".join(error_lines), encoding="utf-8")
 
         return (
@@ -868,13 +1098,14 @@ class GamDeduplicationProfile:
             "",
             "## Dataset progress",
             "",
-            "| Dataset | Status | Inputs | Output candidates | Expected | Missing inputs |",
-            "|---|---|---:|---:|---:|---:|",
+            "| Dataset | Status | Inputs remaining | Validated outputs | Unvalidated outputs | Expected | Missing inputs |",
+            "|---|---|---:|---:|---:|---:|---:|",
         ]
         for item in status["datasets"]:
             lines.append(
                 f"| {item['dataset']} | {item['status']} | "
-                f"{item['input_gams_nonzero']} | {item['outputs_present_unvalidated']} | "
+                f"{item['input_gams_nonzero']} | {item['outputs_validated_exact_match']} | "
+                f"{item['outputs_present_unvalidated']} | "
                 f"{item['expected_samples']} | {item['missing_inputs']} |"
             )
 
@@ -886,13 +1117,27 @@ class GamDeduplicationProfile:
             lines.extend(["", "## Warnings", ""])
             lines.extend(f"- {warning}" for warning in status["warnings"])
 
+        historical = status.get("historical_events", {})
+        historical_failures = historical.get("failed_jobs", [])
+        historical_errors = historical.get("error_hits", [])
+        if historical_failures or historical_errors:
+            lines.extend([
+                "",
+                "## Historical events",
+                "",
+                f"- superseded failed job records: {len(historical_failures)}",
+                f"- historical error-log groups: {len(historical_errors)}",
+                f"- {historical.get('note', '')}",
+            ])
+
         lines.extend([
             "",
             "## Validation boundary",
             "",
             status["validation_boundary"],
             "",
-            "This scan does not run `vg stats`, compute checksums, read complete GAM files, "
+            "This scan reads the small deduplication summaries but does not run `vg stats`, "
+            "compute checksums, read complete GAM files, "
             "submit jobs or modify Puhti. The running workflow therefore receives no additional "
             "high-volume storage I/O from GenomeAgent.",
             "",

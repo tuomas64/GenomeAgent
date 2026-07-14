@@ -1,5 +1,5 @@
 {
-  "profile_version": "1.0",
+  "profile_version": "1.1",
   "project_root": "/scratch/project_2001113",
   "account": "project_2001113",
   "user": "tuomas64",
@@ -7,8 +7,8 @@
   "max_recent_log_files": 48,
   "max_log_tail_bytes": 65536,
   "job_name_patterns": [
-    "gam_dedup",
-    "dedup"
+    "own_gam_dedup_fast",
+    "swe_gam_dedup_fast"
   ],
   "datasets": [
     {
@@ -22,6 +22,13 @@
       "output_dir_candidates": [
         "/scratch/project_2001113/pangenome/giraffe_mapping/own_deduplicated_from_allas",
         "/scratch/project_2001113/pangenome/giraffe_mapping/gam_minicactus_complete_own_data_deduplicated"
+      ],
+      "output_gam_globs": [
+        "{output_dir}/deduplicated_gams/*.dedup.gam",
+        "{output_dir}/*.dedup.gam"
+      ],
+      "summary_globs": [
+        "{output_dir}/dedup_stats/*.dedup_summary.tsv"
       ],
       "manifest_candidates": [
         "/scratch/project_2001113/pangenome/giraffe_mapping/own_remaining_gam_dedup_manifest.tsv",
@@ -50,6 +57,13 @@
       "output_dir_candidates": [
         "/scratch/project_2001113/pangenome/giraffe_mapping/swedish_deduplicated_from_allas",
         "/scratch/project_2001113/pangenome/giraffe_mapping/gam_minicactus_complete_swedish_deduplicated"
+      ],
+      "output_gam_globs": [
+        "{output_dir}/deduplicated_gams/*.dedup.gam",
+        "{output_dir}/*.dedup.gam"
+      ],
+      "summary_globs": [
+        "{output_dir}/dedup_stats/*.dedup_summary.tsv"
       ],
       "manifest_candidates": [
         "/scratch/project_2001113/pangenome/giraffe_mapping/swedish_remaining_gam_dedup_manifest.tsv",

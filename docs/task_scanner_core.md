@@ -45,7 +45,7 @@ The scan produces:
 - `task_scan.json`: complete structured observation, configuration and interpretation.
 - `dataset_summary.tsv`: progress for own and Swedish datasets.
 - `sample_status.tsv`: one row per observed sample.
-- `missing_inputs.tsv`: manifest or worker samples without a non-empty input GAM.
+- `missing_inputs.tsv`: samples without a non-empty input GAM or successful retained completion evidence.
 - `running_jobs.tsv`: relevant jobs currently reported by `squeue`.
 - `recent_jobs.tsv`: relevant jobs reported by `sacct` for the current day.
 - `scanned_paths.tsv`: path candidates and the paths selected by the profile.
@@ -59,7 +59,8 @@ The profile also supports master manifests that contain only remaining samples. 
 
 - master-manifest sample identifiers;
 - GAM filenames in the selected input directory;
-- GAM filenames in the selected output directory; and
+- deduplicated GAMs matched under `deduplicated_gams/`;
+- validation summaries matched under `dedup_stats/`; and
 - worker-manifest sample identifiers.
 
 This prevents an incremental rerun manifest from being mistaken for the full 233- or 225-sample cohort.
@@ -68,14 +69,18 @@ This prevents an incremental rerun manifest from being mistaken for the full 233
 
 Per-sample states are deliberately conservative:
 
+- `completed_exact_template_pair_match`: the deduplicated GAM and its summary exist, and the summary records `EXACT_TEMPLATE_PAIR_MATCH`.
 - `output_present_unvalidated`: a non-empty output GAM exists.
+- `summary_present_output_missing`: validation evidence exists but the expected output GAM is missing.
 - `assigned_pending_or_running`: an input exists and a worker manifest assigns the sample, but no output is present.
 - `pending_unassigned`: an input exists but no output or worker assignment was found.
-- `missing_input`: the sample is expected but no non-empty input GAM was found.
+- `missing_input_no_completion_evidence`: neither a non-empty input nor successful completion evidence was found.
 
-A non-empty output is only a metadata-level completion candidate. It is not called validated by the Task Scanner.
+The production worker deletes a restored source GAM only after writing the deduplicated GAM and an `EXACT_TEMPLATE_PAIR_MATCH` summary. The scanner therefore treats a missing source GAM as a successful lifecycle transition when both retained outputs exist. It does not report that sample as a missing input.
 
-When all 458 expected output GAMs are present, the next safe action becomes `validate_deduplicated_gams_before_vg_pack`. Content-level validation remains a separate workflow and should confirm the established duplicate-template accounting rule, including `EXACT_TEMPLATE_PAIR_MATCH`, before `vg pack` and `vg call -a` are started.
+When all 458 expected outputs have `EXACT_TEMPLATE_PAIR_MATCH` evidence, the next safe action becomes `review_residual_duplication_qc_before_vg_pack`. Residual-duplication QC remains separate from the worker's exact duplicate-template accounting.
+
+Scheduler failures and log errors are associated with SLURM parent job IDs. Errors from a superseded attempt remain visible as historical provenance but do not change the status of a newer active attempt. Errors belonging to the current parent job still produce `running_with_warnings` or `attention_required`.
 
 ## Safety and HPC impact
 
@@ -88,7 +93,7 @@ The profile is read-only. It does not:
 - compute checksums across large files; or
 - perform residual-duplication QC while the main jobs are active.
 
-It reads directory metadata, manifests, scheduler state and at most the configured number of bytes from the tails of recent log files. This keeps monitoring lightweight while GAM processing is using the parallel filesystem.
+It reads directory metadata, small deduplication summary files, scheduler state and at most the configured number of bytes from the tails of recent log files. This keeps monitoring lightweight while GAM processing is using the parallel filesystem.
 
 ## Adding another task profile
 
