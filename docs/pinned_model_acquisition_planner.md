@@ -41,6 +41,10 @@ An acquisition source is sufficiently pinned only when it records:
 - the inventory's total byte size;
 - a reviewed and accepted license identifier matching the backend registry.
 
+An accepted license also requires structured provenance tying the reviewer, timestamp,
+review URL and immutable revision to one exact source-evidence SHA-256. Setting only
+`license_review_status` is rejected.
+
 The planner's `source_metadata_request.json` describes the evidence the separate
 [Read-only Model Source Metadata Collector](model_source_metadata_collector.md)
 must obtain. It is a data request, not an executable provider command. Public provider

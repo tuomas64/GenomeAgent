@@ -8,10 +8,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 from genomeagent.ai_evaluation import AIRegistry
 from genomeagent.model_source_evidence import (
+    ModelSourceApprovalCore,
     ModelSourceEvidenceCollector,
     ModelSourceEvidenceCore,
     ModelSourceEvidenceError,
@@ -117,6 +119,16 @@ class ModelSourceEvidenceTests(unittest.TestCase):
             specification_root=root / "config/ai/acquisition",
             evidence_root=root / "evidence",
             state_root=root / "state",
+        )
+
+    def approval_core(self, root: Path, registry: AIRegistry):
+        return ModelSourceApprovalCore(
+            registry=registry,
+            policy_root=root / "config/ai/source_evidence",
+            specification_root=root / "config/ai/acquisition",
+            evidence_root=root / "evidence",
+            state_root=root / "state",
+            approval_root=root / "approvals",
         )
 
     def collect(self, root: Path, registry: AIRegistry, client=None):
@@ -327,6 +339,186 @@ class ModelSourceEvidenceTests(unittest.TestCase):
             self.assertIn("Model download       : disabled", completed.stdout)
             self.assertIn("Configuration updates: disabled", completed.stdout)
             self.assertIn("Proposal status      : researcher_review_required", completed.stdout)
+
+    def test_explicit_approval_records_exact_evidence_and_updates_only_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            collected, _ = self.collect(root, registry)
+            spec_path = root / "config/ai/acquisition/roihu_qwen3_coder.json"
+            before = json.loads(spec_path.read_text())
+            result = self.approval_core(root, registry).approve(
+                backend_id="roihu_qwen3_coder",
+                evidence_id=collected.evidence_id,
+                reviewer="tuomas64",
+                accepted_license="Apache-2.0",
+                confirmation=True,
+                accepted_at=datetime(2026, 7, 15, 10, 30, tzinfo=timezone.utc),
+            )
+            self.assertTrue(result.applied)
+            self.assertFalse(result.already_applied)
+            after = json.loads(spec_path.read_text())
+            self.assertEqual(after["target"], before["target"])
+            self.assertEqual(after["representation"], before["representation"])
+            self.assertEqual(after["storage_policy"], before["storage_policy"])
+            self.assertEqual(after["integrity_policy"], before["integrity_policy"])
+            self.assertEqual(after["safety"], before["safety"])
+            self.assertEqual(after["source"]["resolved_revision"], REVISION)
+            self.assertEqual(
+                after["source"]["source_inventory_sha256"],
+                collected.source_inventory_sha256,
+            )
+            self.assertEqual(after["source"]["source_total_bytes"], 60_000_020_000)
+            self.assertEqual(
+                after["source"]["license_review_status"], "reviewed_accepted"
+            )
+            approval = after["source"]["license_approval"]
+            self.assertEqual(approval["approval_id"], result.approval_id)
+            self.assertEqual(approval["source_evidence_id"], collected.evidence_id)
+            self.assertEqual(approval["reviewer"], "tuomas64")
+            self.assertEqual(approval["accepted_at_utc"], "2026-07-15T10:30:00Z")
+            artifact = json.loads(result.approval_path.read_text())
+            self.assertFalse(artifact["safety"]["model_download"])
+            self.assertFalse(artifact["safety"]["gpu_allocation"])
+            proposal = json.loads(
+                (root / "state/roihu_qwen3_coder/acquisition_spec_proposal.json").read_text()
+            )
+            self.assertEqual(
+                proposal["status"], "identity_and_license_approval_reflected"
+            )
+            self.assertTrue(
+                proposal["license_review"]["researcher_acceptance_recorded"]
+            )
+
+    def test_approval_is_idempotent_for_same_evidence_reviewer_and_license(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            collected, _ = self.collect(root, registry)
+            core = self.approval_core(root, registry)
+            first = core.approve(
+                "roihu_qwen3_coder",
+                collected.evidence_id,
+                "tuomas64",
+                "Apache-2.0",
+                True,
+                accepted_at=datetime(2026, 7, 15, 10, 30, tzinfo=timezone.utc),
+            )
+            second = core.approve(
+                "roihu_qwen3_coder",
+                collected.evidence_id,
+                "tuomas64",
+                "Apache-2.0",
+                True,
+                accepted_at=datetime(2026, 7, 15, 11, 30, tzinfo=timezone.utc),
+            )
+            self.assertEqual(first.approval_id, second.approval_id)
+            self.assertFalse(second.applied)
+            self.assertTrue(second.already_applied)
+            self.assertEqual(
+                second.status, "approved_source_identity_already_recorded"
+            )
+
+    def test_approval_requires_confirmation_exact_license_and_latest_evidence(self):
+        cases = (
+            ({"confirmation": False}, "confirm-license-review"),
+            ({"accepted_license": "MIT"}, "exactly match"),
+            ({"evidence_id": "20260715T090000000000Z"}, "not the latest"),
+        )
+        for overrides, expected in cases:
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                registry = self.copied_repository(root)
+                collected, _ = self.collect(root, registry)
+                arguments = {
+                    "backend_id": "roihu_qwen3_coder",
+                    "evidence_id": collected.evidence_id,
+                    "reviewer": "tuomas64",
+                    "accepted_license": "Apache-2.0",
+                    "confirmation": True,
+                }
+                arguments.update(overrides)
+                with self.assertRaisesRegex(ModelSourceEvidenceError, expected):
+                    self.approval_core(root, registry).approve(**arguments)
+
+    def test_stale_source_evidence_cannot_be_approved(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            collected, _ = self.collect(root, registry)
+            backend_path = root / "config/ai/backends/roihu_qwen3_coder.json"
+            backend = json.loads(backend_path.read_text())
+            backend["notes"] += " Configuration changed."
+            backend_path.write_text(json.dumps(backend) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ModelSourceEvidenceError, "not ready"):
+                self.approval_core(root, registry).approve(
+                    "roihu_qwen3_coder",
+                    collected.evidence_id,
+                    "tuomas64",
+                    "Apache-2.0",
+                    True,
+                )
+
+    def test_tampered_approval_artifact_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            collected, _ = self.collect(root, registry)
+            core = self.approval_core(root, registry)
+            first = core.approve(
+                "roihu_qwen3_coder",
+                collected.evidence_id,
+                "tuomas64",
+                "Apache-2.0",
+                True,
+            )
+            approval = json.loads(first.approval_path.read_text())
+            approval["reviewer"] = "someone_else"
+            first.approval_path.write_text(json.dumps(approval) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ModelSourceEvidenceError, "content digest"):
+                core.approve(
+                    "roihu_qwen3_coder",
+                    collected.evidence_id,
+                    "tuomas64",
+                    "Apache-2.0",
+                    True,
+                )
+
+    def test_cli_approval_makes_only_the_declared_local_configuration_change(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            collected, _ = self.collect(root, registry)
+            command = [
+                sys.executable,
+                "scripts/model_source_metadata.py",
+                "approve",
+                "roihu_qwen3_coder",
+                "--evidence-id", collected.evidence_id,
+                "--reviewer", "tuomas64",
+                "--accept-license", "Apache-2.0",
+                "--confirm-license-review",
+                "--backend-root", str(root / "config/ai/backends"),
+                "--prompt-root", str(root / "config/ai/prompts"),
+                "--suite-root", str(root / "config/ai/suites"),
+                "--case-root", str(root / "benchmarks/ai"),
+                "--policy-root", str(root / "config/ai/source_evidence"),
+                "--specification-root", str(root / "config/ai/acquisition"),
+                "--evidence-root", str(root / "evidence"),
+                "--state-root", str(root / "cli-state"),
+                "--approval-root", str(root / "cli-approvals"),
+            ]
+            completed = subprocess.run(
+                command,
+                cwd=REPOSITORY_ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertIn("Remote access           : disabled", completed.stdout)
+            self.assertIn("Model download          : disabled", completed.stdout)
+            self.assertIn("Specification edit: applied", completed.stdout)
 
 
 if __name__ == "__main__":

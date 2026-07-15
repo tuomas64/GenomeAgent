@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
 import re
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -16,9 +18,14 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Mapping, Optional, Protocol
 
 from genomeagent.ai_evaluation import AIRegistry
+from genomeagent.model_acquisition import (
+    ModelAcquisitionError,
+    validate_acquisition_specification,
+)
 
 
 MODEL_SOURCE_EVIDENCE_POLICY_VERSION = "1.0"
+MODEL_SOURCE_APPROVAL_POLICY_VERSION = "1.0"
 PROVIDER = "huggingface_hub"
 FALSE_SAFETY_FIELDS = (
     "repository_file_download",
@@ -89,6 +96,18 @@ class ModelSourceIngestResult:
     blockers: tuple[str, ...]
     proposal_status: str
     artifact_paths: tuple[Path, ...]
+
+
+@dataclass(frozen=True)
+class ModelSourceApprovalResult:
+    backend_id: str
+    approval_id: str
+    approval_path: Path
+    specification_path: Path
+    applied: bool
+    already_applied: bool
+    status: str
+    next_safe_action: str
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -680,28 +699,50 @@ def _proposal(
 ) -> dict[str, Any]:
     metadata = latest["normalized_metadata"]
     readiness = latest["readiness"]
-    proposed = {
+    current_source = specification.get("source", {})
+    if not isinstance(current_source, Mapping):
+        current_source = {}
+    identity_fields = {
         "resolved_revision": metadata.get("resolved_revision"),
         "source_inventory_sha256": metadata.get("source_inventory_sha256"),
         "source_total_bytes": metadata.get("source_total_bytes"),
         "license_identifier": metadata.get("license_identifier"),
-        "license_review_status": "unreviewed",
     }
-    current_source = specification.get("source", {})
+    identity_matches = all(
+        current_source.get(field) == value
+        for field, value in identity_fields.items()
+    )
+    recorded_approval = current_source.get("license_approval")
+    approval_matches = (
+        identity_matches
+        and current_source.get("license_review_status") == "reviewed_accepted"
+        and isinstance(recorded_approval, Mapping)
+        and recorded_approval.get("source_evidence_id") == latest.get("evidence_id")
+        and recorded_approval.get("source_evidence_sha256") == latest.get("source_sha256")
+        and recorded_approval.get("license_identifier") == metadata.get("license_identifier")
+        and recorded_approval.get("resolved_revision") == metadata.get("resolved_revision")
+    )
+    proposed = {
+        **identity_fields,
+        "license_review_status": (
+            "reviewed_accepted" if approval_matches else "unreviewed"
+        ),
+    }
     changes = []
-    if isinstance(current_source, Mapping):
-        for field, value in proposed.items():
-            if current_source.get(field) != value:
-                changes.append({
-                    "field": "source.{}".format(field),
-                    "current": current_source.get(field),
-                    "proposed": value,
-                })
+    for field, value in proposed.items():
+        if current_source.get(field) != value:
+            changes.append({
+                "field": "source.{}".format(field),
+                "current": current_source.get(field),
+                "proposed": value,
+            })
     applicable = readiness.get("status") == "source_metadata_ready_for_researcher_review"
     if not applicable:
         status = "blocked_by_source_metadata_evidence"
     elif changes:
         status = "researcher_review_required"
+    elif approval_matches:
+        status = "identity_and_license_approval_reflected"
     else:
         status = "identity_values_already_reflected"
     revision = str(metadata.get("resolved_revision") or "")
@@ -733,7 +774,10 @@ def _proposal(
                 if repository and revision and license_path
                 else None
             ),
-            "researcher_acceptance_recorded": False,
+            "researcher_acceptance_recorded": approval_matches,
+            "recorded_approval_id": (
+                recorded_approval.get("approval_id") if approval_matches else None
+            ),
         },
         "automatic_application_allowed": False,
         "automatic_license_acceptance_allowed": False,
@@ -890,4 +934,386 @@ class ModelSourceEvidenceCore:
             blockers=tuple(latest["readiness"]["blockers"]),
             proposal_status=str(proposal["status"]),
             artifact_paths=artifacts,
+        )
+
+
+def _approval_report(approval: Mapping[str, Any]) -> str:
+    return "\n".join([
+        "# GenomeAgent Model Source Approval",
+        "",
+        "- Backend: `{}`".format(approval["backend_id"]),
+        "- Approval ID: `{}`".format(approval["approval_id"]),
+        "- Source evidence: `{}`".format(approval["source_evidence_id"]),
+        "- Resolved revision: `{}`".format(
+            approval["approved_source_values"]["resolved_revision"]
+        ),
+        "- License: `{}`".format(approval["accepted_license_identifier"]),
+        "- Reviewer: `{}`".format(approval["reviewer"]),
+        "- Accepted at: `{}`".format(approval["accepted_at_utc"]),
+        "- Authorized change: **acquisition source identity and license record only**",
+        "- Model download: **no**",
+        "",
+        "This immutable record proves explicit researcher approval for the exact source "
+        "evidence above. It does not authorize model download, remote access, Slurm or "
+        "GPU execution, registry updates, backend activation, inference or training.",
+        "",
+    ])
+
+
+def _validate_approval_artifact(
+    approval: Mapping[str, Any], approval_id: str, backend_id: str
+) -> None:
+    if approval.get("schema_version") != "1.0":
+        raise ModelSourceEvidenceError("Unsupported model source approval schema.")
+    if approval.get("policy_version") != MODEL_SOURCE_APPROVAL_POLICY_VERSION:
+        raise ModelSourceEvidenceError("Unsupported model source approval policy.")
+    if approval.get("source_mode") != "explicit_researcher_license_approval":
+        raise ModelSourceEvidenceError("Invalid model source approval mode.")
+    if approval.get("approval_id") != approval_id:
+        raise ModelSourceEvidenceError("Model source approval ID mismatch.")
+    if approval.get("backend_id") != backend_id:
+        raise ModelSourceEvidenceError("Model source approval backend mismatch.")
+    approved_values = approval.get("approved_source_values")
+    if not isinstance(approved_values, Mapping):
+        raise ModelSourceEvidenceError("Model source approval has no approved values.")
+    identity = {
+        "policy_version": MODEL_SOURCE_APPROVAL_POLICY_VERSION,
+        "backend_id": backend_id,
+        "source_evidence_id": approval.get("source_evidence_id"),
+        "source_evidence_sha256": approval.get("source_evidence_sha256"),
+        "reviewer": approval.get("reviewer"),
+        "accepted_license_identifier": approval.get("accepted_license_identifier"),
+        "review_url": approval.get("review_url"),
+        "approved_source_values": dict(approved_values),
+    }
+    if _sha256_value(identity) != approval_id:
+        raise ModelSourceEvidenceError("Model source approval content digest mismatch.")
+    for field in (
+        "source_evidence_sha256",
+        "proposal_sha256",
+        "specification_before_sha256",
+        "specification_after_sha256",
+    ):
+        if not re.fullmatch(r"[0-9a-f]{64}", str(approval.get(field) or "")):
+            raise ModelSourceEvidenceError(
+                "Model source approval has invalid {}.".format(field)
+            )
+    approval_record = approval.get("license_approval_record")
+    if not isinstance(approval_record, Mapping):
+        raise ModelSourceEvidenceError("Model source approval has no license record.")
+    expected_record_values = {
+        "approval_id": approval_id,
+        "source_evidence_id": approval.get("source_evidence_id"),
+        "source_evidence_sha256": approval.get("source_evidence_sha256"),
+        "reviewer": approval.get("reviewer"),
+        "accepted_at_utc": approval.get("accepted_at_utc"),
+        "license_identifier": approval.get("accepted_license_identifier"),
+        "review_url": approval.get("review_url"),
+        "resolved_revision": approved_values.get("resolved_revision"),
+    }
+    for field, expected in expected_record_values.items():
+        if approval_record.get(field) != expected:
+            raise ModelSourceEvidenceError(
+                "Model source approval license record mismatch for {}.".format(field)
+            )
+    safety = approval.get("safety")
+    required_false = (
+        "model_download",
+        "repository_file_download",
+        "remote_access",
+        "remote_writes",
+        "job_submission",
+        "gpu_allocation",
+        "automatic_registry_update",
+        "automatic_backend_activation",
+        "inference_execution",
+        "training_execution",
+    )
+    if not isinstance(safety, Mapping):
+        raise ModelSourceEvidenceError("Model source approval has no safety record.")
+    if safety.get("acquisition_source_configuration_update") is not True:
+        raise ModelSourceEvidenceError("Approval does not identify its narrow mutation.")
+    for field in required_false:
+        if safety.get(field) is not False:
+            raise ModelSourceEvidenceError(
+                "Model source approval must explicitly disable {}.".format(field)
+            )
+
+
+class ModelSourceApprovalCore:
+    """Apply an explicit researcher approval to one exact source evidence snapshot."""
+
+    def __init__(
+        self,
+        registry: Optional[AIRegistry] = None,
+        policy_root: Path = Path("config/ai/source_evidence"),
+        specification_root: Path = Path("config/ai/acquisition"),
+        evidence_root: Path = Path("workspace/model_source_evidence"),
+        state_root: Path = Path("workspace/model_source_state"),
+        approval_root: Path = Path("workspace/model_source_approvals"),
+    ):
+        self.registry = registry or AIRegistry()
+        self.policy_root = Path(policy_root)
+        self.specification_root = Path(specification_root)
+        self.evidence_root = Path(evidence_root)
+        self.state_root = Path(state_root)
+        self.approval_root = Path(approval_root)
+
+    def approve(
+        self,
+        backend_id: str,
+        evidence_id: str,
+        reviewer: str,
+        accepted_license: str,
+        confirmation: bool,
+        accepted_at: Optional[datetime] = None,
+    ) -> ModelSourceApprovalResult:
+        if confirmation is not True:
+            raise ModelSourceEvidenceError(
+                "Explicit --confirm-license-review is required."
+            )
+        reviewer = str(reviewer or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9@._-]{0,127}", reviewer):
+            raise ModelSourceEvidenceError("Unsafe or empty reviewer identifier.")
+        if not re.fullmatch(
+            r"[0-9]{8}T[0-9]{6}(?:[0-9]{6})?Z", str(evidence_id or "")
+        ):
+            raise ModelSourceEvidenceError("Unsafe or invalid source evidence ID.")
+        accepted_license = str(accepted_license or "").strip()
+
+        core = ModelSourceEvidenceCore(
+            registry=self.registry,
+            policy_root=self.policy_root,
+            specification_root=self.specification_root,
+            evidence_root=self.evidence_root,
+            state_root=self.state_root,
+        )
+        ingested = core.ingest(backend_id)
+        state_path = ingested.state_dir / "current_source_metadata.json"
+        proposal_path = ingested.state_dir / "acquisition_spec_proposal.json"
+        state, _ = _read_json(state_path, "current model source state")
+        proposal, proposal_raw = _read_json(
+            proposal_path, "model acquisition specification proposal"
+        )
+        latest = state.get("latest")
+        if not isinstance(latest, Mapping):
+            raise ModelSourceEvidenceError("Current source state has no latest evidence.")
+        if latest.get("evidence_id") != evidence_id:
+            raise ModelSourceEvidenceError(
+                "Approval evidence ID is not the latest current source observation."
+            )
+        readiness = latest.get("readiness")
+        if not isinstance(readiness, Mapping) or readiness.get("status") != (
+            "source_metadata_ready_for_researcher_review"
+        ):
+            raise ModelSourceEvidenceError(
+                "Current source metadata is not ready for researcher approval."
+            )
+        if proposal.get("source_evidence_id") != evidence_id:
+            raise ModelSourceEvidenceError("Proposal source evidence ID mismatch.")
+        if proposal.get("applicable") is not True:
+            raise ModelSourceEvidenceError("Source acquisition proposal is not applicable.")
+        license_review = proposal.get("license_review")
+        if not isinstance(license_review, Mapping):
+            raise ModelSourceEvidenceError("Proposal has no license review evidence.")
+        observed_license = str(license_review.get("observed_identifier") or "")
+        if accepted_license != observed_license:
+            raise ModelSourceEvidenceError(
+                "Accepted license must exactly match observed license metadata."
+            )
+        review_url = str(license_review.get("review_url") or "")
+        if not review_url.startswith("https://huggingface.co/"):
+            raise ModelSourceEvidenceError("Proposal has no safe license review URL.")
+
+        backend_path, backend, _ = self.registry.backend(backend_id)
+        normalized_id = str(backend["backend_id"])
+        specification_path = self.specification_root / (normalized_id + ".json")
+        if specification_path.is_symlink():
+            raise ModelSourceEvidenceError(
+                "Refusing to update a symlinked acquisition specification."
+            )
+        try:
+            specification, specification_raw = validate_acquisition_specification(
+                specification_path, backend
+            )
+        except ModelAcquisitionError as exc:
+            raise ModelSourceEvidenceError(
+                "Current acquisition specification is invalid: {}".format(exc)
+            ) from exc
+        del backend_path
+        if specification["source"].get("license_review_status") == "reviewed_rejected":
+            raise ModelSourceEvidenceError(
+                "The acquisition specification records a rejected license."
+            )
+
+        proposed_values = proposal.get("proposed_source_values")
+        if not isinstance(proposed_values, Mapping):
+            raise ModelSourceEvidenceError("Proposal has no source values.")
+        approved_values = {
+            "resolved_revision": proposed_values.get("resolved_revision"),
+            "source_inventory_sha256": proposed_values.get(
+                "source_inventory_sha256"
+            ),
+            "source_total_bytes": proposed_values.get("source_total_bytes"),
+            "license_identifier": proposed_values.get("license_identifier"),
+            "license_review_status": "reviewed_accepted",
+        }
+        if approved_values["license_identifier"] != accepted_license:
+            raise ModelSourceEvidenceError("Proposal license identity changed.")
+        source_evidence_sha256 = str(proposal.get("source_evidence_sha256") or "")
+        if not re.fullmatch(r"[0-9a-f]{64}", source_evidence_sha256):
+            raise ModelSourceEvidenceError("Proposal source evidence digest is invalid.")
+        identity = {
+            "policy_version": MODEL_SOURCE_APPROVAL_POLICY_VERSION,
+            "backend_id": normalized_id,
+            "source_evidence_id": evidence_id,
+            "source_evidence_sha256": source_evidence_sha256,
+            "reviewer": reviewer,
+            "accepted_license_identifier": accepted_license,
+            "review_url": review_url,
+            "approved_source_values": approved_values,
+        }
+        approval_id = _sha256_value(identity)
+        approval_dir = self.approval_root / normalized_id
+        approval_path = approval_dir / (approval_id + ".json")
+        report_path = approval_dir / (approval_id + ".md")
+
+        current_specification_sha256 = _sha256_bytes(specification_raw)
+        existing = None
+        if approval_path.exists():
+            existing, _ = _read_json(approval_path, "model source approval")
+            _validate_approval_artifact(existing, approval_id, normalized_id)
+            _write_immutable(report_path, _approval_report(existing))
+            expected_after = str(existing.get("specification_after_sha256") or "")
+            expected_before = str(existing.get("specification_before_sha256") or "")
+            if current_specification_sha256 == expected_after:
+                if specification["source"].get("license_approval") != existing.get(
+                    "license_approval_record"
+                ):
+                    raise ModelSourceEvidenceError(
+                        "Approved specification and approval provenance disagree."
+                    )
+                return ModelSourceApprovalResult(
+                    backend_id=normalized_id,
+                    approval_id=approval_id,
+                    approval_path=approval_path,
+                    specification_path=specification_path,
+                    applied=False,
+                    already_applied=True,
+                    status="approved_source_identity_already_recorded",
+                    next_safe_action="rerun_model_acquisition_plan",
+                )
+            if current_specification_sha256 != expected_before:
+                raise ModelSourceEvidenceError(
+                    "Acquisition specification changed after the approval record."
+                )
+
+        if existing is None:
+            accepted_at = accepted_at or datetime.now(timezone.utc)
+            if accepted_at.tzinfo is None:
+                raise ModelSourceEvidenceError("Approval timestamp must include a timezone.")
+            accepted_at_utc = accepted_at.astimezone(timezone.utc).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+            license_approval_record = {
+                "schema_version": "1.0",
+                "approval_id": approval_id,
+                "source_evidence_id": evidence_id,
+                "source_evidence_sha256": source_evidence_sha256,
+                "reviewer": reviewer,
+                "accepted_at_utc": accepted_at_utc,
+                "license_identifier": accepted_license,
+                "review_url": review_url,
+                "resolved_revision": approved_values["resolved_revision"],
+            }
+        else:
+            license_approval_record = dict(existing["license_approval_record"])
+            approved_values = dict(existing["approved_source_values"])
+            accepted_at_utc = str(existing["accepted_at_utc"])
+
+        updated_specification = copy.deepcopy(specification)
+        updated_specification["source"].update(approved_values)
+        updated_specification["source"]["license_approval"] = license_approval_record
+        updated_text = _pretty_json(updated_specification)
+        updated_raw = updated_text.encode("utf-8")
+        updated_sha256 = _sha256_bytes(updated_raw)
+        if existing is not None and updated_sha256 != existing.get(
+            "specification_after_sha256"
+        ):
+            raise ModelSourceEvidenceError(
+                "Recorded approval does not reproduce the approved specification."
+            )
+
+        with tempfile.TemporaryDirectory(
+            prefix=".genomeagent-source-approval-",
+            dir=str(specification_path.parent),
+        ) as temporary_dir:
+            candidate_path = Path(temporary_dir) / specification_path.name
+            _atomic_write(candidate_path, updated_text)
+            try:
+                validate_acquisition_specification(candidate_path, backend)
+            except ModelAcquisitionError as exc:
+                raise ModelSourceEvidenceError(
+                    "Approved acquisition specification would be invalid: {}".format(exc)
+                ) from exc
+
+        if existing is None:
+            approval = {
+                "schema_version": "1.0",
+                "policy_version": MODEL_SOURCE_APPROVAL_POLICY_VERSION,
+                "source_mode": "explicit_researcher_license_approval",
+                "backend_id": normalized_id,
+                "approval_id": approval_id,
+                "source_evidence_id": evidence_id,
+                "source_evidence_sha256": source_evidence_sha256,
+                "proposal_sha256": _sha256_bytes(proposal_raw),
+                "reviewer": reviewer,
+                "accepted_at_utc": accepted_at_utc,
+                "accepted_license_identifier": accepted_license,
+                "review_url": review_url,
+                "approved_source_values": approved_values,
+                "license_approval_record": license_approval_record,
+                "specification_path": str(specification_path),
+                "specification_before_sha256": current_specification_sha256,
+                "specification_after_sha256": updated_sha256,
+                "safety": {
+                    "acquisition_source_configuration_update": True,
+                    "model_download": False,
+                    "repository_file_download": False,
+                    "remote_access": False,
+                    "remote_writes": False,
+                    "job_submission": False,
+                    "gpu_allocation": False,
+                    "automatic_registry_update": False,
+                    "automatic_backend_activation": False,
+                    "inference_execution": False,
+                    "training_execution": False,
+                },
+            }
+            _validate_approval_artifact(approval, approval_id, normalized_id)
+            _write_immutable(approval_path, _pretty_json(approval))
+            _write_immutable(report_path, _approval_report(approval))
+
+        latest_specification_raw = specification_path.read_bytes()
+        if _sha256_bytes(latest_specification_raw) != current_specification_sha256:
+            raise ModelSourceEvidenceError(
+                "Acquisition specification changed during approval; no update applied."
+            )
+        _atomic_write(specification_path, updated_text)
+        try:
+            validate_acquisition_specification(specification_path, backend)
+        except ModelAcquisitionError as exc:
+            raise ModelSourceEvidenceError(
+                "Updated acquisition specification failed validation: {}".format(exc)
+            ) from exc
+        core.ingest(normalized_id)
+        return ModelSourceApprovalResult(
+            backend_id=normalized_id,
+            approval_id=approval_id,
+            approval_path=approval_path,
+            specification_path=specification_path,
+            applied=True,
+            already_applied=False,
+            status="approved_source_identity_recorded",
+            next_safe_action="rerun_model_acquisition_plan",
         )

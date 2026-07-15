@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.9 (Draft)
+**Current Version:** 1.10 (Draft)
 
 **Last Updated:** July 2026
 
@@ -206,6 +206,18 @@ specification. It produces a proposal containing observed values and a direct li
 review target. A researcher must review the immutable revision, inventory, capacity
 implications and license before those values become authoritative configuration.
 
+Explicit model-source approval is a narrow, auditable configuration mutation. The
+approval record binds the researcher identifier, acceptance timestamp, license URL and
+identifier to an exact source-evidence ID, evidence SHA-256, immutable revision,
+inventory digest and source size. The versioned acquisition specification retains this
+provenance; a bare `reviewed_accepted` status without the structured record is invalid.
+
+Approval authorizes only the recorded acquisition source identity and license state.
+It does not grant model download, provider authentication, remote writes, Slurm
+submission, GPU allocation, registry update, backend activation, inference or training
+authority. Repeating the same approval is idempotent, while changed configuration,
+newer evidence or modified approval artifacts block application.
+
 ## Responsible HPC Usage
 
 GenomeAgent benchmarks new workflows before scaling, monitors representative and exceptional analyses, compares requested resources with measured use, estimates future requirements from comparable jobs, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage and scheduler load.
@@ -230,6 +242,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.10 | July 2026 | Added exact-evidence model-source and license approval, structured reviewer provenance, narrow configuration mutation, idempotency and rejection of unproven accepted-license states. |
 | 1.9 | July 2026 | Added bounded public model-source metadata observations, immutable revision confirmation, canonical inventory evidence, provider-checksum limitations and review-only acquisition-specification proposals. |
 | 1.8 | July 2026 | Added content-addressed pinned-model acquisition planning, source identity and license gates, transparent storage lower bounds, full-file integrity contracts and atomic publication requirements. |
 | 1.7 | July 2026 | Added bounded read-only AI backend environment observations, shallow model inventory policy, stale-evidence handling, local retention controls and independent environment/model/benchmark gates. |

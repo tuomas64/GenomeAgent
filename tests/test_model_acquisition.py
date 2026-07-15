@@ -95,12 +95,49 @@ class ModelAcquisitionPlannerTests(unittest.TestCase):
     def pin_source(self, root: Path, total_bytes: int = 60_000_000_000) -> None:
         path = root / "config/ai/acquisition/roihu_qwen3_coder.json"
         value = json.loads(path.read_text())
-        value["source"].update({
+        approved_values = {
             "resolved_revision": "a" * 40,
             "source_inventory_sha256": "b" * 64,
             "source_total_bytes": total_bytes,
+            "license_identifier": "Apache-2.0",
             "license_review_status": "reviewed_accepted",
-        })
+        }
+        approval_identity = {
+            "policy_version": "1.0",
+            "backend_id": "roihu_qwen3_coder",
+            "source_evidence_id": "20260715T100000000000Z",
+            "source_evidence_sha256": "d" * 64,
+            "reviewer": "test_researcher",
+            "accepted_license_identifier": "Apache-2.0",
+            "review_url": (
+                "https://huggingface.co/Qwen/"
+                "Qwen3-Coder-30B-A3B-Instruct/blob/{}/LICENSE"
+            ).format("a" * 40),
+            "approved_source_values": approved_values,
+        }
+        approval_id = hashlib.sha256(
+            json.dumps(
+                approval_identity,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        value["source"].update(approved_values)
+        value["source"]["license_approval"] = {
+            "schema_version": "1.0",
+            "approval_id": approval_id,
+            "source_evidence_id": "20260715T100000000000Z",
+            "source_evidence_sha256": "d" * 64,
+            "reviewer": "test_researcher",
+            "accepted_at_utc": "2026-07-15T10:00:00Z",
+            "license_identifier": "Apache-2.0",
+            "review_url": (
+                "https://huggingface.co/Qwen/"
+                "Qwen3-Coder-30B-A3B-Instruct/blob/{}/LICENSE"
+            ).format("a" * 40),
+            "resolved_revision": "a" * 40,
+        }
         path.write_text(json.dumps(value) + "\n", encoding="utf-8")
 
     def test_repository_specification_is_planning_only_and_matches_backend(self):
@@ -249,6 +286,36 @@ class ModelAcquisitionPlannerTests(unittest.TestCase):
             value["target"]["installation_path"] = "/scratch/project/../unsafe"
             path.write_text(json.dumps(value) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(ModelAcquisitionError, "unsafe path segment"):
+                self.planner(root, registry).plan("roihu_qwen3_coder")
+
+    def test_accepted_license_without_exact_approval_provenance_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            self.write_environment_state(root)
+            path = root / "config/ai/acquisition/roihu_qwen3_coder.json"
+            value = json.loads(path.read_text())
+            value["source"].update({
+                "resolved_revision": "a" * 40,
+                "source_inventory_sha256": "b" * 64,
+                "source_total_bytes": 60_000_000_000,
+                "license_review_status": "reviewed_accepted",
+            })
+            path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ModelAcquisitionError, "license_approval"):
+                self.planner(root, registry).plan("roihu_qwen3_coder")
+
+    def test_tampered_license_approval_provenance_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            self.write_environment_state(root)
+            self.pin_source(root)
+            path = root / "config/ai/acquisition/roihu_qwen3_coder.json"
+            value = json.loads(path.read_text())
+            value["source"]["license_approval"]["reviewer"] = "someone_else"
+            path.write_text(json.dumps(value) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ModelAcquisitionError, "content digest"):
                 self.planner(root, registry).plan("roihu_qwen3_coder")
 
     def test_plan_is_content_addressed_idempotent_and_immutable(self):

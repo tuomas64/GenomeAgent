@@ -80,6 +80,10 @@ matches the backend registry and a license file is listed, status becomes
 `source_metadata_ready_for_researcher_review`. The proposal remains
 `researcher_review_required` until a researcher reviews it.
 
+The separate [Explicit Model Source and License Approval Core](model_source_approval.md)
+can record that review for one exact evidence snapshot and make only the verified
+source values authoritative. The collector itself remains read-only.
+
 The component cannot:
 
 - download repository files or model weights;

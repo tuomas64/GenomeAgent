@@ -57,6 +57,11 @@ license metadata and canonical inventory digest. It performs exactly two bounded
 metadata requests and produces a review-only acquisition-specification proposal; it
 does not download repository files, accept a license or update configuration.
 
+The **Explicit Model Source and License Approval Core** converts a researcher's
+review into an immutable, evidence-bound approval record. It applies only the verified
+source identity and structured licence provenance to the acquisition specification;
+all remote, download, scheduler, GPU, registry and activation authority remains off.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -92,6 +97,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | AI Backend Evidence         | ✅ Initial reusable core   |
 | Model Acquisition Planning  | ✅ Initial reusable core   |
 | Model Source Metadata       | ✅ Initial reusable core   |
+| Model Source Approval       | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -240,6 +246,23 @@ metadata, not file contents, and writes an acquisition-specification proposal wi
 applying it. License acceptance, model download, Roihu access, Slurm submission, GPU
 allocation and backend activation remain disabled. See the
 [model source metadata documentation](docs/model_source_metadata_collector.md).
+
+After reviewing the exact license URL, record explicit acceptance for a specific
+evidence snapshot with:
+
+```bash
+python3 scripts/model_source_metadata.py approve roihu_qwen3_coder \
+  --evidence-id 20260715T094807016620Z \
+  --reviewer tuomas64 \
+  --accept-license Apache-2.0 \
+  --confirm-license-review
+```
+
+The command is the only source-configuration mutation in this workflow. It writes an
+immutable local approval record and updates the versioned acquisition specification
+with the exact revision, inventory, size and licence provenance. It remains unable to
+download a model or contact Roihu. See the
+[model source approval documentation](docs/model_source_approval.md).
 
 ---
 

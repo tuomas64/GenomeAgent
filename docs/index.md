@@ -15,6 +15,7 @@ performing reproducible genomics analyses on HPC systems.
 - [Read-only AI Backend Evidence Collector](ai_backend_evidence_collector.md)
 - [Pinned Model Acquisition Planning Core](pinned_model_acquisition_planner.md)
 - [Read-only Model Source Metadata Collector](model_source_metadata_collector.md)
+- [Explicit Model Source and License Approval Core](model_source_approval.md)
 - [Data and Knowledge Management Plan](data_and_knowledge_management_plan.md)
 - [Design philosophy](philosophy.md)
 - [Roadmap](roadmap.md)

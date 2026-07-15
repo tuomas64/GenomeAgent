@@ -151,7 +151,7 @@ def _positive_int(value: Any, label: str, minimum: int = 1) -> int:
     return value
 
 
-def _validate_spec(
+def validate_acquisition_specification(
     path: Path,
     backend: Mapping[str, Any],
 ) -> tuple[dict[str, Any], bytes]:
@@ -211,6 +211,98 @@ def _validate_spec(
     review_status = str(source.get("license_review_status") or "")
     if review_status not in LICENSE_REVIEW_STATUSES:
         raise ModelAcquisitionError("Unsupported model license review status.")
+    license_approval = source.get("license_approval")
+    if review_status == "reviewed_accepted":
+        if (
+            revision is None
+            or source.get("source_inventory_sha256") is None
+            or source_total is None
+        ):
+            raise ModelAcquisitionError(
+                "Accepted model licenses require complete pinned source identity."
+            )
+        if not isinstance(license_approval, Mapping):
+            raise ModelAcquisitionError(
+                "Accepted model licenses require a structured license_approval record."
+            )
+        required_approval_fields = {
+            "schema_version",
+            "approval_id",
+            "source_evidence_id",
+            "source_evidence_sha256",
+            "reviewer",
+            "accepted_at_utc",
+            "license_identifier",
+            "review_url",
+            "resolved_revision",
+        }
+        if set(license_approval) != required_approval_fields:
+            raise ModelAcquisitionError(
+                "license_approval must contain the exact approved provenance fields."
+            )
+        if license_approval.get("schema_version") != "1.0":
+            raise ModelAcquisitionError("Unsupported license approval schema version.")
+        if not re.fullmatch(
+            r"[0-9a-f]{64}", str(license_approval.get("approval_id") or "")
+        ):
+            raise ModelAcquisitionError("Invalid license approval ID.")
+        if not re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(license_approval.get("source_evidence_sha256") or ""),
+        ):
+            raise ModelAcquisitionError(
+                "Invalid license approval source evidence SHA-256."
+            )
+        if not re.fullmatch(
+            r"[0-9]{8}T[0-9]{6}(?:[0-9]{6})?Z",
+            str(license_approval.get("source_evidence_id") or ""),
+        ):
+            raise ModelAcquisitionError("Invalid license approval source evidence ID.")
+        if not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9@._-]{0,127}",
+            str(license_approval.get("reviewer") or ""),
+        ):
+            raise ModelAcquisitionError("Invalid license approval reviewer.")
+        if not re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+            str(license_approval.get("accepted_at_utc") or ""),
+        ):
+            raise ModelAcquisitionError("Invalid license approval timestamp.")
+        if license_approval.get("license_identifier") != license_identifier:
+            raise ModelAcquisitionError("License approval identifier mismatch.")
+        if license_approval.get("resolved_revision") != revision:
+            raise ModelAcquisitionError("License approval revision mismatch.")
+        review_url = str(license_approval.get("review_url") or "")
+        expected_prefix = "https://huggingface.co/{}/blob/{}/".format(
+            repository, revision
+        )
+        if (
+            not review_url.startswith(expected_prefix)
+            or not re.fullmatch(r"https://huggingface\.co/[^\s]+", review_url)
+        ):
+            raise ModelAcquisitionError("License approval review URL mismatch.")
+        approval_identity = {
+            "policy_version": "1.0",
+            "backend_id": backend_id,
+            "source_evidence_id": license_approval["source_evidence_id"],
+            "source_evidence_sha256": license_approval["source_evidence_sha256"],
+            "reviewer": license_approval["reviewer"],
+            "accepted_license_identifier": license_identifier,
+            "review_url": review_url,
+            "approved_source_values": {
+                "resolved_revision": revision,
+                "source_inventory_sha256": source.get("source_inventory_sha256"),
+                "source_total_bytes": source_total,
+                "license_identifier": license_identifier,
+                "license_review_status": "reviewed_accepted",
+            },
+        }
+        if _sha256_value(approval_identity) != license_approval["approval_id"]:
+            raise ModelAcquisitionError("License approval content digest mismatch.")
+    elif license_approval is not None:
+        raise ModelAcquisitionError(
+            "license_approval must be absent until a license is reviewed and accepted."
+        )
 
     if target.get("environment_id") != backend.get("environment_id"):
         raise ModelAcquisitionError("Target environment must match the backend registry.")
@@ -538,7 +630,7 @@ class ModelAcquisitionPlanner:
         backend_path, backend, backend_raw = self.registry.backend(backend_id)
         normalized_id = str(backend["backend_id"])
         spec_path = self.specification_root / (normalized_id + ".json")
-        spec, spec_raw = _validate_spec(spec_path, backend)
+        spec, spec_raw = validate_acquisition_specification(spec_path, backend)
         backend_digest = _sha256_bytes(backend_raw)
         state, evidence_sources, environment_blockers = _environment_evidence(
             self.backend_state_root,

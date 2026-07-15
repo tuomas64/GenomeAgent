@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect and ingest bounded public AI model source metadata."""
+"""Collect, ingest and explicitly approve bounded AI model source metadata."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ if str(REPOSITORY_ROOT) not in sys.path:
 
 from genomeagent.ai_evaluation import AIEvaluationError, AIRegistry  # noqa: E402
 from genomeagent.model_source_evidence import (  # noqa: E402
+    ModelSourceApprovalCore,
     ModelSourceEvidenceCollector,
     ModelSourceEvidenceCore,
     ModelSourceEvidenceError,
@@ -65,6 +66,38 @@ def parse_args() -> argparse.Namespace:
         "--state-root", type=Path, default=Path("workspace/model_source_state")
     )
     _registry_paths(ingest)
+
+    approve = subparsers.add_parser(
+        "approve",
+        help=(
+            "Record an explicit license review and apply only verified source values."
+        ),
+    )
+    approve.add_argument("backend", help="Registered AI backend ID.")
+    approve.add_argument("--evidence-id", required=True)
+    approve.add_argument("--reviewer", required=True)
+    approve.add_argument("--accept-license", required=True)
+    approve.add_argument(
+        "--confirm-license-review",
+        action="store_true",
+        help="Confirm that the named reviewer inspected and accepts the exact license.",
+    )
+    approve.add_argument(
+        "--policy-root", type=Path, default=Path("config/ai/source_evidence")
+    )
+    approve.add_argument(
+        "--specification-root", type=Path, default=Path("config/ai/acquisition")
+    )
+    approve.add_argument(
+        "--evidence-root", type=Path, default=Path("workspace/model_source_evidence")
+    )
+    approve.add_argument(
+        "--state-root", type=Path, default=Path("workspace/model_source_state")
+    )
+    approve.add_argument(
+        "--approval-root", type=Path, default=Path("workspace/model_source_approvals")
+    )
+    _registry_paths(approve)
     return parser.parse_args()
 
 
@@ -141,12 +174,54 @@ def _ingest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _approve(args: argparse.Namespace) -> int:
+    core = ModelSourceApprovalCore(
+        registry=_registry(args),
+        policy_root=args.policy_root,
+        specification_root=args.specification_root,
+        evidence_root=args.evidence_root,
+        state_root=args.state_root,
+        approval_root=args.approval_root,
+    )
+    _header("GenomeAgent Explicit Model Source and License Approval")
+    print("Backend                 : {}".format(args.backend))
+    print("Evidence ID             : {}".format(args.evidence_id))
+    print("Reviewer                : {}".format(args.reviewer))
+    print("Accepted license        : {}".format(args.accept_license))
+    print("Authorized config scope : acquisition source identity and license only")
+    print("Remote access           : disabled")
+    print("Model download          : disabled")
+    print("Slurm/GPU execution     : disabled")
+    print("Registry update         : disabled")
+    print("Backend activation      : disabled")
+    print("")
+    result = core.approve(
+        backend_id=args.backend,
+        evidence_id=args.evidence_id,
+        reviewer=args.reviewer,
+        accepted_license=args.accept_license,
+        confirmation=args.confirm_license_review,
+    )
+    print("Approval complete.")
+    print("Approval ID       : {}".format(result.approval_id))
+    print("Status            : {}".format(result.status))
+    print("Specification edit: {}".format("applied" if result.applied else "already applied"))
+    print("Next safe action  : {}".format(result.next_safe_action))
+    print("")
+    print("Wrote: {}".format(result.approval_path))
+    print("Wrote: {}".format(result.approval_path.with_suffix(".md")))
+    print("Updated: {}".format(result.specification_path))
+    return 0
+
+
 def main() -> int:
     args = parse_args()
     try:
         if args.command == "collect":
             return _collect(args)
-        return _ingest(args)
+        if args.command == "ingest":
+            return _ingest(args)
+        return _approve(args)
     except (ModelSourceEvidenceError, AIEvaluationError) as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
