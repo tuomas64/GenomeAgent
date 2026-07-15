@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "gam_deduplication",
+  "workflow_version": "1.0",
+  "task": "gam_deduplication",
+  "title": "GAM duplicate-template removal",
+  "scheduler": "slurm",
+  "resource_profile_key": "gam_dedup_fast",
+  "portable_steps": [
+    "read an authoritative dataset manifest",
+    "process one assigned sample without duplicate assignment",
+    "publish a non-empty deduplicated GAM",
+    "record exact template-pair accounting",
+    "retain residual duplication QC as a separate observation",
+    "delete the source GAM only after successful publication evidence"
+  ],
+  "requirements": {
+    "software": [
+      {
+        "name": "python",
+        "version": "3.9",
+        "comparison": "compatible_minor"
+      },
+      {
+        "name": "vg",
+        "version": "1.74.1",
+        "comparison": "exact"
+      }
+    ],
+    "environment_bindings": [
+      "project_storage_root",
+      "module_initialization"
+    ]
+  },
+  "workflow_parameters": [
+    "dataset_manifest",
+    "source_gam_root",
+    "deduplicated_gam_root",
+    "deduplication_summary_root"
+  ],
+  "source_environment_parameters": {
+    "puhti": {
+      "dataset_manifest": "resolved per dataset from config/tasks/gam_deduplication.json",
+      "source_gam_root": "resolved per dataset from input_dir_candidates",
+      "deduplicated_gam_root": "resolved per dataset from output_dir_candidates/deduplicated_gams",
+      "deduplication_summary_root": "resolved per dataset from output_dir_candidates/dedup_stats",
+      "project_root": "/scratch/project_2001113",
+      "expected_own_samples": 233,
+      "expected_swedish_samples": 225
+    }
+  },
+  "validation_contract": {
+    "non_empty_output_gam_required": true,
+    "exact_template_pair_match_required": true,
+    "source_deletion_after_validation_only": true,
+    "residual_duplication_qc_is_separate": true,
+    "residual_duplication_acceptance_threshold": null
+  },
+  "execution_policy": {
+    "automatic_execution_allowed": false,
+    "researcher_approval_required": true,
+    "fresh_pre_execution_scan_required": true
+  }
+}

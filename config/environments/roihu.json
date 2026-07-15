@@ -11,6 +11,10 @@
     "partition": null,
     "cpus_per_task": null
   },
+  "capabilities": {
+    "software": {},
+    "bindings": {}
+  },
   "resource_transfer_policy": {
     "direct_external_profile_application_allowed": false,
     "target_pilot_required_for_external_profiles": true

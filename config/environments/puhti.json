@@ -11,6 +11,50 @@
     "partition": null,
     "cpus_per_task": null
   },
+  "capabilities": {
+    "software": {
+      "python": {
+        "status": "verified",
+        "versions": [
+          "3.9"
+        ],
+        "evidence": "successful Task Scanner execution with remote_python python3.9"
+      },
+      "gatk": {
+        "status": "verified",
+        "versions": [
+          "4.5.0.0"
+        ],
+        "evidence": "scattered GenotypeGVCFs worker and completed job logs"
+      },
+      "bcftools": {
+        "status": "verified",
+        "versions": [
+          "1.16"
+        ],
+        "evidence": "verified after sourcing /appl/profile/zz-csc-env.sh and loading biokit"
+      },
+      "vg": {
+        "status": "observed",
+        "versions": [
+          "1.74.1"
+        ],
+        "evidence": "current GAM mapping and duplicate-removal workflow configuration"
+      }
+    },
+    "bindings": {
+      "project_storage_root": {
+        "status": "verified",
+        "value": "/scratch/project_2001113",
+        "evidence": "current Task Scanner task configurations"
+      },
+      "module_initialization": {
+        "status": "verified",
+        "value": "/appl/profile/zz-csc-env.sh",
+        "evidence": "verified non-interactive Puhti module initialization"
+      }
+    }
+  },
   "resource_transfer_policy": {
     "direct_external_profile_application_allowed": false,
     "target_pilot_required_for_external_profiles": true

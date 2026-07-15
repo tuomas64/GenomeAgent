@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "scattered_joint_calling",
+  "workflow_version": "1.0",
+  "task": "scattered_joint_calling",
+  "title": "250 kb interval-scattered GenotypeGVCFs",
+  "scheduler": "slurm",
+  "resource_profile_key": "scattered_genotypegvcfs_250kb",
+  "portable_steps": [
+    "read the authoritative physical interval manifest",
+    "resolve one array element to one manifest line using the configured offset",
+    "run GenotypeGVCFs against the chromosome GenomicsDB workspace",
+    "validate temporary VCF and index",
+    "atomically publish the validated pair"
+  ],
+  "requirements": {
+    "software": [
+      {
+        "name": "gatk",
+        "version": "4.5.0.0",
+        "comparison": "exact"
+      },
+      {
+        "name": "bcftools",
+        "version": "1.16",
+        "comparison": "exact"
+      }
+    ],
+    "environment_bindings": [
+      "project_storage_root",
+      "module_initialization"
+    ]
+  },
+  "workflow_parameters": [
+    "reference_fasta",
+    "genomicsdb_workspace_pattern",
+    "interval_manifest",
+    "output_root",
+    "expected_samples"
+  ],
+  "source_environment_parameters": {
+    "puhti": {
+      "reference_fasta": "/scratch/project_2001113/GATK/jointcalling/reference/H4v6_jointcalling.fa",
+      "genomicsdb_workspace_pattern": "/scratch/project_2001113/GATK/jointcalling/GenomicsDB_chr{chromosome}",
+      "interval_manifest": "/scratch/project_2001113/GATK/jointcalling/genotyped_scatter_250kb/intervals_250kb.tsv",
+      "output_root": "/scratch/project_2001113/GATK/jointcalling/genotyped_scatter_250kb",
+      "expected_samples": 455
+    }
+  },
+  "validation_contract": {
+    "temporary_output_required": true,
+    "non_empty_vcf_required": true,
+    "non_empty_index_required": true,
+    "vcf_header_readable_required": true,
+    "expected_sample_count_required": true,
+    "atomic_publication_required": true,
+    "zero_variant_output_classification": "completed_with_zero_variants_after_explicit_record_count_validation"
+  },
+  "execution_policy": {
+    "automatic_execution_allowed": false,
+    "researcher_approval_required": true,
+    "fresh_pre_execution_scan_required": true
+  }
+}

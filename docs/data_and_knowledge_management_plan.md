@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.4 (Draft)
+**Current Version:** 1.5 (Draft)
 
 **Last Updated:** July 2026
 
@@ -151,6 +151,16 @@ When the target environment lacks local evidence, GenomeAgent may use a sufficie
 
 The Resource Decision and Transfer Core writes resource decisions, execution-readiness gates and provenance as separate local artifacts. It cannot submit jobs. A future Execution Engine must require a fresh task observation, explicit researcher approval, a complete target scheduler allocation and post-action verification before consuming any accepted plan.
 
+## Knowledge Promotion and Workflow Transfer
+
+Brain v2 promotes only structured facts produced by deterministic GenomeAgent components. Each promoted claim records a stable semantic identifier, a content-sensitive claim-version identifier, scope, confidence, status and source-artifact SHA-256 digests. Content-addressed knowledge snapshots are immutable; current knowledge and supersession relationships can be rebuilt from those snapshots.
+
+AI-derived project interpretations are candidate knowledge, not authoritative facts. Brain v1 output and future model-generated suggestions are retained in a separate review queue until a researcher explicitly accepts, edits or rejects them. Deterministic promotion does not by itself make a scientific interpretation or resource default authoritative.
+
+Versioned workflow templates separate portable workflow logic and validation contracts from environment-specific software, storage paths, modules, scheduler defaults and resource evidence. Workflow transfer planning checks these requirements independently and records unknown or incompatible target facts rather than guessing from an environment name. A source-environment resource profile can support a bounded target pilot only through the Resource Decision policy; it is never silently converted into a new-environment default.
+
+Brain knowledge and workflow-transfer artifacts remain non-executable. A proposal that passes all current knowledge gates still requires a fresh observation, complete target bindings, an allow-listed future Execution Engine action, explicit researcher approval and post-action verification.
+
 ## Responsible HPC Usage
 
 GenomeAgent benchmarks new workflows before scaling, monitors representative and exceptional analyses, compares requested resources with measured use, estimates future requirements from comparable jobs, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage and scheduler load.
@@ -175,6 +185,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.5 | July 2026 | Added deterministic Brain v2 knowledge promotion, immutable claim snapshots, AI-candidate isolation and environment-aware workflow transfer gates. |
 | 1.4 | July 2026 | Added source-environment isolation, deterministic cross-environment resource decisions, explicit no-evidence outcomes and target-pilot safety requirements. |
 | 1.3 | July 2026 | Added HPC resource observations, deterministic empirical resource profiles, retention and provenance requirements, and their controlled relationship to the future Execution Engine. |
 | 1.2 | July 2026 | Added immutable task observations, deterministic operational state, provenance, observation-health gates and the future execution boundary. |

@@ -44,7 +44,7 @@ The **Resource Evidence and Learning Core** records bounded Slurm accounting for
 
 ### GenomeAgent Brain
 
-The **GenomeAgent Brain** is the cognitive center of the system. It continuously learns from observations and combines accumulated project knowledge with AI reasoning to develop an evolving understanding of the research project.
+The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
 
 Its core functions include:
 
@@ -71,6 +71,8 @@ The future **Execution Engine** will safely perform computational analyses under
 | Read-only Task Monitoring   | ✅ Initial reusable core   |
 | Operational State Bridge    | ✅ Initial reusable core   |
 | Resource Evidence Learning  | ✅ Initial reusable core   |
+| Brain v2 Knowledge Promotion| ✅ Initial reusable core   |
+| Workflow Transfer Planning  | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -140,6 +142,22 @@ python3 scripts/task_plan.py resources \
 ```
 
 The planner prefers target-environment evidence, reduces cross-environment proposals to low-confidence pilot-only guidance, and explicitly withholds values when evidence is missing or blocked. Evidence availability is reported separately from allocation availability, so substantial but narrow measurements remain visible even when no transferable proposal is allowed. It writes canonical plans under `workspace/task_plans/<task>/<target_environment>/<profile_key>/`. See the [Resource Decision and Transfer Core documentation](docs/resource_decision_and_transfer_core.md).
+
+Promote the deterministic operational artifacts into versioned Brain v2 knowledge:
+
+```bash
+python3 scripts/brain.py ingest scattered_joint_calling
+python3 scripts/brain.py ingest gam_deduplication
+```
+
+Then evaluate a versioned workflow contract against a target environment:
+
+```bash
+python3 scripts/brain.py plan-workflow scattered_joint_calling \
+  --target-environment roihu
+```
+
+Knowledge snapshots are content-addressed under `workspace/brain_knowledge/<task>/`. The transfer planner reports compatible, unknown and incompatible requirements separately and consumes the existing deterministic resource decision as a gate. Brain v1 AI output, when present, remains a review-required candidate and is never silently promoted. See the [Brain v2 documentation](docs/brain_knowledge_and_workflow_transfer_v2.md).
 
 ---
 
