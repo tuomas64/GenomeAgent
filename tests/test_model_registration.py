@@ -117,6 +117,17 @@ class ModelRegistrationTests(unittest.TestCase):
 
         backend_path = config / "backends/roihu_qwen3_coder.json"
         backend = json.loads(backend_path.read_text())
+        # Registration tests always start from an explicit pre-registration
+        # fixture, even when the repository itself records a verified install.
+        backend["status"] = "planned_unvalidated"
+        backend["benchmark_status"] = "not_run"
+        backend["model"]["revision"] = None
+        backend["model"]["weights_sha256"] = None
+        backend["model"].pop("weights_digest_type", None)
+        backend["installation"]["status"] = "planned_not_present"
+        backend["installation"].pop("manifest_sha256", None)
+        backend["installation"].pop("verified_inventory_sha256", None)
+        backend["installation"].pop("registration", None)
         backend["installation"]["path"] = str(installation)
         backend_path.write_text(json.dumps(backend, indent=2) + "\n")
         specification_path = config / "acquisition/roihu_qwen3_coder.json"

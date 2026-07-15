@@ -74,21 +74,34 @@ class AIEvaluationTests(unittest.TestCase):
         )
         return path
 
-    def test_repository_registry_validates_and_reports_planned_backend_blockers(self):
+    def test_repository_registry_validates_current_backend_lifecycle_state(self):
         registry = self.repository_registry()
         result = registry.validate()
         self.assertEqual(result.backends, 1)
         self.assertEqual(result.prompts, 1)
         self.assertEqual(result.suites, 1)
         self.assertEqual(result.cases, 8)
-        self.assertEqual(result.backend_statuses["roihu_qwen3_coder"], "not_ready")
         _, backend, _ = registry.backend("roihu_qwen3_coder")
-        self.assertEqual(backend["derived_readiness"]["blockers"], [
-            "model_revision_unpinned",
-            "model_weights_digest_missing",
-            "model_path_unverified",
-            "inference_not_benchmarked",
-        ])
+        if backend["status"] == "planned_unvalidated":
+            self.assertEqual(result.backend_statuses["roihu_qwen3_coder"], "not_ready")
+            self.assertEqual(backend["derived_readiness"]["blockers"], [
+                "model_revision_unpinned",
+                "model_weights_digest_missing",
+                "model_path_unverified",
+                "inference_not_benchmarked",
+            ])
+        else:
+            self.assertEqual(backend["status"], "validated_candidate")
+            self.assertEqual(result.backend_statuses["roihu_qwen3_coder"], "not_ready")
+            self.assertEqual(
+                backend["derived_readiness"]["blockers"],
+                ["inference_not_benchmarked"],
+            )
+            self.assertEqual(backend["installation"]["status"], "verified_present")
+            self.assertEqual(
+                backend["model"]["weights_digest_type"],
+                "verified_model_candidate_manifest_sha256",
+            )
         self.assertFalse(
             backend["derived_readiness"]["automatic_execution_allowed"]
         )
