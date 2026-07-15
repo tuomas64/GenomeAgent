@@ -61,7 +61,10 @@ class AIBackendEvidenceTests(unittest.TestCase):
             "module": {
                 "expected_module": "python-vllm/0.19.1",
                 "expected_version": "0.19.1",
-                "selected_initialization": "/appl/profile/zz-csc-env.sh",
+                "selected_initialization": "/usr/share/lmod/lmod/init/bash",
+                "module_use_paths": [
+                    "/appl/modulefiles/manual/aida/aarch64"
+                ],
                 "availability": {
                     "returncode": 0,
                     "stdout": "",
@@ -160,6 +163,14 @@ class AIBackendEvidenceTests(unittest.TestCase):
         _, policy, _ = collector.policy("roihu_qwen3_coder")
         self.assertEqual(policy["limits"]["maximum_model_entries"], 200)
         self.assertEqual(policy["limits"]["timeout_seconds"], 90)
+        self.assertEqual(
+            policy["module_initialization_candidates"],
+            ["/usr/share/lmod/lmod/init/bash"],
+        )
+        self.assertEqual(
+            policy["module_use_paths"],
+            ["/appl/modulefiles/manual/aida/aarch64"],
+        )
         self.assertTrue(all(value is False for value in policy["safety"].values()))
 
     def test_collection_writes_immutable_snapshot_without_execution_authority(self):
@@ -292,6 +303,10 @@ class AIBackendEvidenceTests(unittest.TestCase):
             )
             program = _probe_program(backend, policy)
             self.assertIn("os.scandir(path_text)", program)
+            self.assertIn('source "$MODULE_INIT"', program)
+            self.assertIn('module use "$module_path"', program)
+            self.assertIn('"bash", "-c", module_prefix', program)
+            self.assertNotIn('["bash", "-lic"]', program)
             self.assertNotIn("os.walk", program)
             self.assertNotIn("nvidia-smi", program)
             self.assertNotIn("huggingface_hub", program)
@@ -299,6 +314,19 @@ class AIBackendEvidenceTests(unittest.TestCase):
             self.assertNotIn("subprocess.run([\"sbatch\"", program)
             self.assertNotIn("rm -", program)
             self.assertLess(len(program), 20000)
+
+    def test_unsafe_module_use_path_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            policy_path = root / "config/ai/evidence/roihu_qwen3_coder.json"
+            policy = json.loads(policy_path.read_text())
+            policy["module_use_paths"] = ["/appl/modules; touch /tmp/unsafe"]
+            policy_path.write_text(json.dumps(policy) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                AIBackendEvidenceError, "unsupported shell characters"
+            ):
+                self.collector(root, registry).policy("roihu_qwen3_coder")
 
     def test_cli_ingest_reports_model_acquisition_as_next_review_step(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -5,7 +5,10 @@
   "remote_python": "python3",
   "project_storage_root": "/scratch/project_2001113",
   "module_initialization_candidates": [
-    "/appl/profile/zz-csc-env.sh"
+    "/usr/share/lmod/lmod/init/bash"
+  ],
+  "module_use_paths": [
+    "/appl/modulefiles/manual/aida/aarch64"
   ],
   "model_inventory_manifest": ".genomeagent-model-manifest.json",
   "checks": {

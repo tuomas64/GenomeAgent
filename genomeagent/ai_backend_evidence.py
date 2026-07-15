@@ -165,6 +165,17 @@ def _validate_policy(
         )
     for candidate in candidates:
         _validate_absolute_path(candidate, "module initialization candidate")
+    module_use_paths = policy.get("module_use_paths")
+    if not isinstance(module_use_paths, list) or len(module_use_paths) > 10:
+        raise AIBackendEvidenceError(
+            "module_use_paths must contain at most 10 paths."
+        )
+    for module_path in module_use_paths:
+        validated = _validate_absolute_path(module_path, "module use path")
+        if not re.fullmatch(r"/[A-Za-z0-9_./+-]+", validated):
+            raise AIBackendEvidenceError(
+                "module use path contains unsupported shell characters."
+            )
     manifest_name = str(policy.get("model_inventory_manifest") or "").strip()
     if not re.fullmatch(r"[A-Za-z0-9._-]+", manifest_name):
         raise AIBackendEvidenceError("Unsafe model inventory manifest filename.")
@@ -238,6 +249,7 @@ def _probe_program(backend: Mapping[str, Any], policy: Mapping[str, Any]) -> str
         "model_path": installation["path"],
         "model_inventory_manifest": policy["model_inventory_manifest"],
         "module_initialization_candidates": policy["module_initialization_candidates"],
+        "module_use_paths": policy["module_use_paths"],
         "checks": policy["checks"],
         "limits": policy["limits"],
     }
@@ -453,27 +465,34 @@ module_env = dict(os.environ)
 module_env.update({
     "MODULE_INIT": module_init or "",
     "MODULE_NAME": CONFIG["expected_module"],
+    "MODULE_USE_PATHS": ":".join(CONFIG["module_use_paths"]),
 })
 module = {
     "expected_module": CONFIG["expected_module"],
     "expected_version": CONFIG["expected_runtime_version"],
     "initialization_candidates": CONFIG["module_initialization_candidates"],
     "selected_initialization": module_init,
+    "module_use_paths": CONFIG["module_use_paths"],
 }
+module_prefix = (
+    'source "$MODULE_INIT" >/dev/null 2>&1 || exit; '
+    'if [ -n "$MODULE_USE_PATHS" ]; then '
+    'old_ifs=$IFS; IFS=:; '
+    'for module_path in $MODULE_USE_PATHS; do '
+    'module use "$module_path" >/dev/null 2>&1 || exit; '
+    'done; IFS=$old_ifs; fi; '
+)
 if checks.get("module_metadata") and module_init:
     module["availability"] = run([
-        "bash", "-c",
-        'source "$MODULE_INIT" >/dev/null 2>&1 && module is-avail "$MODULE_NAME"',
+        "bash", "-c", module_prefix + 'module is-avail "$MODULE_NAME"',
     ], env=module_env)
     module["show"] = run([
-        "bash", "-c",
-        'source "$MODULE_INIT" >/dev/null 2>&1 && module show "$MODULE_NAME"',
+        "bash", "-c", module_prefix + 'module show "$MODULE_NAME"',
     ], env=module_env)
     try:
         loaded = subprocess.run(
             [
-                "bash", "-c",
-                'source "$MODULE_INIT" >/dev/null 2>&1 && '
+                "bash", "-c", module_prefix +
                 'module load "$MODULE_NAME" >/dev/null 2>&1 && env -0',
             ],
             stdout=subprocess.PIPE,

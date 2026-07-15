@@ -36,9 +36,13 @@ It must explicitly disable remote writes, job submission, GPU allocation, model
 download, model import, recursive model scans and hashing of large model files. Policy
 validation fails closed if any of those fields is missing or enabled.
 
-The remote observation uses the system Python named by the policy. It sources the
-approved module environment inside a subprocess, loads the exact module only into that
-temporary process environment and reads package metadata without importing vLLM.
+The remote observation uses the system Python named by the policy. Module
+initialization is also explicit policy. On Roihu, the collector sources the verified
+Lmod initialization script `/usr/share/lmod/lmod/init/bash` and adds only the
+allow-listed module tree `/appl/modulefiles/manual/aida/aarch64`. It uses an ordinary
+non-interactive shell and does not source the user's login or interactive shell startup
+files. The collector loads the exact module only into a temporary subprocess
+environment and reads package metadata without importing vLLM.
 
 ## SSH prerequisite
 
