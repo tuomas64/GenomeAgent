@@ -46,6 +46,12 @@ The **AI Backend Registry and Evaluation Core** versions candidate inference bac
 
 The **Read-only AI Backend Evidence Collector** checks a registered backend against its actual HPC environment using one bounded SSH observation. It verifies architecture, module metadata, scheduler partition metadata, storage and a shallow model-path inventory, then rebuilds current readiness locally without downloading models, allocating a GPU or editing the registry.
 
+The **Controlled Bounded AI Benchmark Execution Core** binds fresh backend evidence,
+the verified installed-model manifest and the eight non-sensitive evaluation cases
+to an expiring researcher authorization. It can submit one offline vLLM job using
+one Roihu GH200 and deterministically score the returned JSONL evidence without
+executing model output, training the model or activating the backend.
+
 The **Pinned Model Acquisition Planning Core** converts that evidence into an immutable,
 review-only source identity, storage and integrity plan. Unknown model revisions,
 inventories, sizes and licenses remain blocking unknowns; the planner does not contact a
@@ -146,6 +152,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Staged Integrity Verification| ✅ Initial reusable core   |
 | Controlled Model Publication| ✅ Initial reusable core   |
 | Installed Model Registration| ✅ Initial reusable core   |
+| Bounded GPU AI Benchmark     | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -251,6 +258,19 @@ This records what would need to be evaluated but does not connect to Roihu, down
 model, create a runnable Slurm script or execute inference. Returned JSONL evidence can
 later be scored with `scripts/ai_benchmark.py evaluate`; even a passing suite remains
 review-only. See the [AI Backend Registry and Evaluation Core documentation](docs/ai_backend_registry_and_evaluation_core.md).
+
+After the model installation and current backend evidence are verified, prepare the
+controlled GPU execution plan with:
+
+```bash
+python3 scripts/ai_benchmark_execution.py prepare \
+  roihu_qwen3_coder \
+  --suite genomeagent_core_v1
+```
+
+Authorization, launch, status and deterministic evaluation are separate commands;
+only launch can submit one bounded GPU job. See the
+[Controlled Bounded AI Benchmark Execution documentation](docs/controlled_ai_benchmark_execution.md).
 
 Collect current read-only evidence from the registered Roihu-GPU environment and then
 derive its canonical state locally:

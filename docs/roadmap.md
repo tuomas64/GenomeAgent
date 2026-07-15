@@ -13,4 +13,5 @@
 - v0.19 Staged Model Integrity Verification
 - v0.20 Controlled Atomic Model Publication
 - v0.21 Installed Model Evidence and Controlled Backend Registration
+- v0.22 Controlled Bounded Roihu GPU Benchmark Execution
 - v1.0 AI-assisted genomics platform

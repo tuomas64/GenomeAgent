@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "1.0",
+  "backend_id": "roihu_qwen3_coder",
+  "ssh_host": "roihu-gpu",
+  "remote_python": "python3",
+  "control_root": "/scratch/project_2001113/.genomeagent/ai_benchmarks",
+  "module_initialization": "/usr/share/lmod/lmod/init/bash",
+  "module_use_path": "/appl/modulefiles/manual/aida/aarch64",
+  "runtime_module": "python-vllm/0.19.1",
+  "limits": {
+    "authorization_validity_seconds": 900,
+    "launch_timeout_seconds": 120,
+    "status_timeout_seconds": 90,
+    "maximum_requests": 16,
+    "maximum_request_bytes": 262144,
+    "maximum_response_bytes": 2097152,
+    "maximum_completion_tokens_per_case": 1200,
+    "maximum_model_length": 16384,
+    "gpu_memory_utilization_basis_points": 8500
+  },
+  "slurm": {
+    "account": "project_2001113",
+    "partition": "gputest",
+    "time_limit": "00:30:00",
+    "nodes": 1,
+    "ntasks": 1,
+    "cpus_per_task": 16,
+    "gpus": 1,
+    "gpu_type": "gh200",
+    "memory": "120G",
+    "job_name": "GAaibench"
+  },
+  "execution_contract": {
+    "suite_id": "genomeagent_core_v1",
+    "data_classification": "non_sensitive_fixtures_only",
+    "offline_provider_mode_required": true,
+    "fixed_temperature": 0.0,
+    "fixed_seed": 2001113,
+    "model_output_execution_allowed": false
+  },
+  "safety": {
+    "automatic_authorization_allowed": false,
+    "automatic_job_submission_allowed": false,
+    "model_download_allowed": false,
+    "external_model_access_allowed": false,
+    "sensitive_project_data_allowed": false,
+    "model_output_execution_allowed": false,
+    "training_allowed": false,
+    "automatic_registry_update_allowed": false,
+    "automatic_backend_activation_allowed": false
+  }
+}

@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.17 (Draft)
+**Current Version:** 1.18 (Draft)
 
 **Last Updated:** July 2026
 
@@ -170,6 +170,13 @@ Prompts and benchmark suites are versioned independently from model backends. Be
 Prepared AI run packages and evaluations are content-addressed, immutable derived evidence. Their provenance records source paths and SHA-256 digests. Model responses remain evidence from an untrusted computational component: they are schema-validated and scored deterministically, but are not automatically executed or promoted into Brain knowledge. A benchmark pass means only that the backend is suitable for researcher review under that exact model, prompt, suite and environment evidence.
 
 Local and external AI backends require separate registry entries, data policies and evaluations. GenomeAgent must never send project data to an external provider through silent fallback. Any future fallback requires explicit researcher choice, an allowed data classification and recorded provenance. Local inference likewise requires a pinned model revision, verified model artifacts, a bounded resource request and explicit approval before job submission.
+
+Controlled benchmark execution binds the exact registered installed-manifest digest,
+fresh environment evidence, immutable fixture requests and scheduler limits into one
+content-addressed plan. Authorization is researcher-specific, expires after 15
+minutes and permits at most one offline fixture-only GPU job. Responses are retained
+as untrusted bounded JSONL evidence and scored locally; they are never executed,
+promoted automatically, used for training or treated as backend activation authority.
 
 ### AI backend environment observations
 
@@ -377,6 +384,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.18 | July 2026 | Added manifest-bound, expiring authorization for one offline GH200 fixture benchmark, bounded response evidence and deterministic local scoring while retaining separate activation authority. |
 | 1.17 | July 2026 | Added fresh installed-manifest evidence, explicit verified-inventory digest semantics, provenance-bound backend registration and a separate GPU benchmark gate. |
 | 1.16 | July 2026 | Added fresh verification-bound publication preflight, separately confirmed cache removal, immediate full re-verification, installed manifests and non-overwriting atomic model publication. |
 | 1.15 | July 2026 | Added exact staged inventory evidence and explicitly authorized serial SHA-256 verification with provider-LFS comparison and a separate publication gate. |

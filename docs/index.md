@@ -22,6 +22,7 @@ performing reproducible genomics analyses on HPC systems.
 - [Staged Model Integrity Verification](model_integrity_verification.md)
 - [Controlled Model Publication](controlled_model_publication.md)
 - [Installed Model Evidence and Controlled Backend Registration](installed_model_registration.md)
+- [Controlled Bounded AI Benchmark Execution](controlled_ai_benchmark_execution.md)
 - [Data and Knowledge Management Plan](data_and_knowledge_management_plan.md)
 - [Design philosophy](philosophy.md)
 - [Roadmap](roadmap.md)
