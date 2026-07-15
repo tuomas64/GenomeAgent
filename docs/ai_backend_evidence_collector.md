@@ -53,6 +53,14 @@ and does not start a login or interactive shell. A missing, non-executable, time
 or non-approved quota command is an environment blocker rather than permission to use
 generic filesystem free space as project quota.
 
+Evidence policy v1.2 recognizes a separately approved installed-model registration.
+The collector accepts inventory identity only when the observed small-manifest
+SHA-256 exactly matches the registered installed-manifest digest, the installation is
+`verified_present`, and the model digest has explicit
+`verified_model_candidate_manifest_sha256` semantics matching the registered verified
+inventory. Manifest presence alone is never treated as integrity evidence, and weight
+files are not rehashed by this collector.
+
 ## SSH prerequisite
 
 The registered backend uses the `roihu-gpu` SSH alias. Configure that alias in the

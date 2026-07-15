@@ -97,6 +97,13 @@ immediately before mutation, writes the installed manifest and performs a
 non-overwriting same-filesystem directory rename. GPU use, inference, registry changes
 and backend activation remain separate gates.
 
+The **Installed Model Evidence and Controlled Backend Registration Core** binds a
+fresh read-only observation of the final manifest and path-and-size inventory to the
+successful integrity verification and atomic publication records. It proposes a
+narrow, researcher-approved backend identity update without rereading model weights.
+Registration leaves bounded GPU inference benchmarking as the only readiness gate and
+does not activate or run the model.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -138,6 +145,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Controlled Staging Download | ✅ Initial reusable core   |
 | Staged Integrity Verification| ✅ Initial reusable core   |
 | Controlled Model Publication| ✅ Initial reusable core   |
+| Installed Model Registration| ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -425,6 +433,31 @@ python3 scripts/model_publication.py launch roihu_qwen3_coder \
 The successful state `published_ready_for_installed_model_evidence` confirms the
 non-overwriting same-filesystem publication but does not activate or run the model.
 See the [controlled publication documentation](docs/controlled_model_publication.md).
+
+Bind the final installed manifest to its verification and publication provenance,
+then derive a review-only registry proposal:
+
+```bash
+python3 scripts/model_registration.py collect roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --publication-id <publication-id>
+
+python3 scripts/model_registration.py ingest roihu_qwen3_coder
+```
+
+After reviewing the proposal, apply only the verified model identity fields:
+
+```bash
+python3 scripts/model_registration.py approve roihu_qwen3_coder \
+  --evidence-id <installed-model-evidence-id> \
+  --reviewer <researcher-id> \
+  --confirm-register-verified-installation
+```
+
+The approval does not submit a GPU job or activate the backend. A fresh backend
+observation must then confirm the registered manifest digest; bounded inference
+benchmarking remains mandatory. See the
+[installed-model registration documentation](docs/installed_model_registration.md).
 
 ---
 

@@ -15,8 +15,10 @@ from typing import Any, Mapping, Optional, Protocol
 from genomeagent.ai_evaluation import AIRegistry
 
 
-AI_BACKEND_EVIDENCE_POLICY_VERSION = "1.1"
-SUPPORTED_AI_BACKEND_EVIDENCE_SNAPSHOT_POLICY_VERSIONS = frozenset({"1.0", "1.1"})
+AI_BACKEND_EVIDENCE_POLICY_VERSION = "1.2"
+SUPPORTED_AI_BACKEND_EVIDENCE_SNAPSHOT_POLICY_VERSIONS = frozenset(
+    {"1.0", "1.1", "1.2"}
+)
 REQUIRED_FALSE_SAFETY_FIELDS = (
     "remote_writes_allowed",
     "job_submission_allowed",
@@ -744,6 +746,44 @@ def _interpret(
         model_observation.get("path"),
         installation.get("path"),
     )
+    manifest = model_observation.get("inventory_manifest", {})
+    manifest_metadata = manifest.get("metadata", {}) if isinstance(manifest, Mapping) else {}
+    registered_manifest_sha256 = str(
+        installation.get("manifest_sha256") or ""
+    ).strip().lower()
+    registered_inventory_sha256 = str(
+        installation.get("verified_inventory_sha256") or ""
+    ).strip().lower()
+    registered_manifest_verified = (
+        installation.get("status") == "verified_present"
+        and isinstance(manifest, Mapping)
+        and manifest.get("exists") is True
+        and isinstance(manifest_metadata, Mapping)
+        and manifest_metadata.get("status") == "parsed"
+        and re.fullmatch(r"[0-9a-f]{64}", registered_manifest_sha256) is not None
+        and manifest_metadata.get("sha256") == registered_manifest_sha256
+        and model.get("weights_digest_type")
+        == "verified_model_candidate_manifest_sha256"
+        and re.fullmatch(r"[0-9a-f]{64}", registered_inventory_sha256) is not None
+        and str(model.get("weights_sha256") or "").strip().lower()
+        == registered_inventory_sha256
+    )
+    add(
+        "registered_installed_manifest",
+        registered_manifest_verified,
+        {
+            "observed_manifest_sha256": (
+                manifest_metadata.get("sha256")
+                if isinstance(manifest_metadata, Mapping)
+                else None
+            ),
+            "installation_status": installation.get("status"),
+        },
+        {
+            "registered_manifest_sha256": registered_manifest_sha256 or None,
+            "registered_inventory_sha256": registered_inventory_sha256 or None,
+        },
+    )
 
     environment_names = {
         "remote_identity", "architecture", "runtime_module", "runtime_version",
@@ -763,13 +803,7 @@ def _interpret(
         model_blockers.append("model_weights_digest_missing")
     if not any(item["check"] == "model_path" and item["status"] == "verified" for item in checks):
         model_blockers.append("model_path_absent")
-    manifest = model_observation.get("inventory_manifest", {})
-    manifest_verified = (
-        isinstance(manifest, Mapping)
-        and manifest.get("exists") is True
-        and manifest.get("verified_against_model_files") is True
-    )
-    if not manifest_verified:
+    if not registered_manifest_verified:
         model_blockers.append("verified_model_inventory_missing")
     benchmark_blockers = []
     if backend.get("benchmark_status") != "passed_reviewed_suite":

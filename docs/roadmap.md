@@ -11,4 +11,6 @@
 - v0.17 Read-only Model Acquisition Runtime Preflight
 - v0.18 Controlled Public Model Staging Download
 - v0.19 Staged Model Integrity Verification
+- v0.20 Controlled Atomic Model Publication
+- v0.21 Installed Model Evidence and Controlled Backend Registration
 - v1.0 AI-assisted genomics platform

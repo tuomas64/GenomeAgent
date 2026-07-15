@@ -21,6 +21,7 @@ performing reproducible genomics analyses on HPC systems.
 - [Controlled Public Model Staging Download](controlled_model_download.md)
 - [Staged Model Integrity Verification](model_integrity_verification.md)
 - [Controlled Model Publication](controlled_model_publication.md)
+- [Installed Model Evidence and Controlled Backend Registration](installed_model_registration.md)
 - [Data and Knowledge Management Plan](data_and_knowledge_management_plan.md)
 - [Design philosophy](philosophy.md)
 - [Roadmap](roadmap.md)

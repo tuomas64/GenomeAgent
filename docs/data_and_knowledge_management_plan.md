@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.16 (Draft)
+**Current Version:** 1.17 (Draft)
 
 **Last Updated:** July 2026
 
@@ -297,6 +297,31 @@ final-directory presence, installed manifest identity, exact path-and-size inven
 and transfer-cache absence. The published model remains inactive until separate
 installed-model evidence, registry review and bounded GPU inference evaluation pass.
 
+### Installed-model evidence and backend registration
+
+Publication does not by itself make a model an authoritative AI backend. GenomeAgent
+records a fresh, bounded observation of the final installation and binds it to the
+approved acquisition specification, exact bundle, successful integrity verification
+and terminal atomic-publication evidence. The observation reads the small installed
+manifest and recursively compares only relative paths and sizes; it does not read or
+rehash model weights.
+
+The installed-manifest SHA-256 must match the value observed immediately after atomic
+publication. Its source verified-manifest digest commits to the path, size and locally
+computed SHA-256 of every approved regular file. These two digests retain distinct
+semantics and are both preserved. A manifest that merely exists, an unregistered
+digest, unexpected file, symlink, special entry, remaining transfer cache or changed
+provenance artifact blocks registration.
+
+Registration is an explicit, narrow and tamper-evident configuration mutation. The
+approval binds the researcher and exact installed-model evidence to the model revision,
+verified inventory digest, installed-manifest digest, bundle, verification and
+publication identifiers. It may mark the installation `verified_present` and the
+backend a validated candidate, but benchmark status remains `not_run`. Registration
+cannot allocate a GPU, run inference or training, activate the backend, execute model
+output or promote model answers into Brain knowledge. A fresh environment observation
+and a separately approved bounded benchmark remain mandatory.
+
 ### Public model source metadata
 
 Public model-source metadata is recorded as immutable evidence separately from the
@@ -352,6 +377,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.17 | July 2026 | Added fresh installed-manifest evidence, explicit verified-inventory digest semantics, provenance-bound backend registration and a separate GPU benchmark gate. |
 | 1.16 | July 2026 | Added fresh verification-bound publication preflight, separately confirmed cache removal, immediate full re-verification, installed manifests and non-overwriting atomic model publication. |
 | 1.15 | July 2026 | Added exact staged inventory evidence and explicitly authorized serial SHA-256 verification with provider-LFS comparison and a separate publication gate. |
 | 1.14 | July 2026 | Added expiring exact-input download authorization, confined public inbound staging transfer and read-only download status evidence. |
