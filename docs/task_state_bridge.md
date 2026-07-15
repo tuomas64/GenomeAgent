@@ -78,6 +78,8 @@ The first valid scan creates a compact baseline event. Later scans may produce:
 
 Unit transitions retain relevant scheduler IDs, scheduler states, log paths and output paths. Every event contains the source scan ID and SHA-256 digest.
 
+For GAM duplicate removal, canonical sample units also retain the validation-summary type and any structured residual-duplication measurements. Exact template-pair completion and residual-duplication QC remain separate facts: a sample can be computationally complete while still carrying a scoped downstream-QC recommendation.
+
 ## Relationship to curated memory
 
 Operational state and curated scientific knowledge have different trust models:

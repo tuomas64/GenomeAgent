@@ -245,7 +245,12 @@ class TaskStateBridgeTests(unittest.TestCase):
                             "sample": "A",
                             "state": "completed_exact_template_pair_match",
                             "output_gam": "/output/A.dedup.gam",
+                            "summary": "/output/A.dedup_residual_summary.tsv",
+                            "summary_type": "dedup_residual_summary",
                             "exact_template_pair_match": True,
+                            "residual_qc_state": "residual_duplicates_detected",
+                            "residual_duplicate_primary_reads_after_dedup": 1486493,
+                            "residual_duplicate_primary_pct_after_dedup": 4.58789,
                         },
                         {
                             "sample": "B",
@@ -277,6 +282,13 @@ class TaskStateBridgeTests(unittest.TestCase):
                 [item["unit_id"] for item in current["units"]],
                 ["own:A", "own:B"],
             )
+            sample_a = next(
+                item for item in current["units"] if item["unit_id"] == "own:A"
+            )
+            self.assertEqual(sample_a["summary_type"], "dedup_residual_summary")
+            self.assertEqual(
+                sample_a["residual_qc_state"], "residual_duplicates_detected"
+            )
             recommendations = json.loads(
                 (state_dir / "recommendations.json").read_text()
             )
@@ -285,6 +297,17 @@ class TaskStateBridgeTests(unittest.TestCase):
                 if item["action"] == "validate_unconfirmed_gam_outputs"
             )
             self.assertEqual(validation["scope"]["samples"], ["own:B"])
+            residual = next(
+                item for item in recommendations["recommendations"]
+                if item["action"] == "review_observed_residual_duplication"
+            )
+            self.assertEqual(residual["scope"]["samples"], ["own:A"])
+            self.assertAlmostEqual(
+                residual["evidence"]["observations"][0][
+                    "residual_duplicate_primary_pct"
+                ],
+                4.58789,
+            )
 
     def test_rejects_non_read_only_scan_bundle(self):
         with tempfile.TemporaryDirectory() as tmp:

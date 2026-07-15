@@ -1,5 +1,5 @@
 {
-  "profile_version": "1.3",
+  "profile_version": "1.4",
   "project_root": "/scratch/project_2001113",
   "account": "project_2001113",
   "user": "tuomas64",
@@ -29,7 +29,8 @@
         "{output_dir}/*.dedup.gam"
       ],
       "summary_globs": [
-        "{output_dir}/dedup_stats/*.dedup_summary.tsv"
+        "{output_dir}/dedup_stats/*.dedup_summary.tsv",
+        "{output_dir}/dedup_stats/*.dedup_residual_summary.tsv"
       ],
       "manifest_candidates": [
         "/scratch/project_2001113/pangenome/giraffe_mapping/own_remaining_gam_dedup_manifest.tsv",
@@ -64,7 +65,8 @@
         "{output_dir}/*.dedup.gam"
       ],
       "summary_globs": [
-        "{output_dir}/dedup_stats/*.dedup_summary.tsv"
+        "{output_dir}/dedup_stats/*.dedup_summary.tsv",
+        "{output_dir}/dedup_stats/*.dedup_residual_summary.tsv"
       ],
       "manifest_candidates": [
         "/scratch/project_2001113/pangenome/giraffe_mapping/swedish_remaining_gam_dedup_manifest.tsv",

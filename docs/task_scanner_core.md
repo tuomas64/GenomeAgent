@@ -62,7 +62,7 @@ The profile also supports master manifests that contain only remaining samples. 
 - master-manifest sample identifiers;
 - GAM filenames in the selected input directory;
 - deduplicated GAMs matched under `deduplicated_gams/`;
-- validation summaries matched under `dedup_stats/`; and
+- standard and residual validation summaries matched under `dedup_stats/`; and
 - worker-manifest sample identifiers.
 
 This prevents an incremental rerun manifest from being mistaken for the full 233- or 225-sample cohort.
@@ -78,7 +78,9 @@ Per-sample states are deliberately conservative:
 - `pending_unassigned`: an input exists but no output or worker assignment was found.
 - `missing_input_no_completion_evidence`: neither a non-empty input nor successful completion evidence was found.
 
-The production worker deletes a restored source GAM only after writing the deduplicated GAM and an `EXACT_TEMPLATE_PAIR_MATCH` summary. The scanner therefore treats a missing source GAM as a successful lifecycle transition when both retained outputs exist. It does not report that sample as a missing input.
+The production worker deletes a restored source GAM only after writing the deduplicated GAM and an `EXACT_TEMPLATE_PAIR_MATCH` summary. Both `.dedup_summary.tsv` and `.dedup_residual_summary.tsv` are accepted as template-pair accounting evidence. The scanner therefore treats a missing source GAM as a successful lifecycle transition when both retained outputs exist. It does not report that sample as a missing input.
+
+Residual summaries retain a separate `residual_qc_state` together with residual duplicate-primary-read counts and percentages when those fields can be parsed. Exact template-pair accounting can therefore be complete while residual duplicates remain a downstream QC warning. GenomeAgent does not invent an acceptance threshold; a researcher-approved residual-duplication policy is required before downstream readiness can be inferred.
 
 When all 458 expected outputs have `EXACT_TEMPLATE_PAIR_MATCH` evidence, the next safe action becomes `review_residual_duplication_qc_before_vg_pack`. Residual-duplication QC remains separate from the worker's exact duplicate-template accounting.
 

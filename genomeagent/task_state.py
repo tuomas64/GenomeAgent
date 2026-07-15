@@ -244,8 +244,19 @@ def _normalize_gam_units(observation: Mapping[str, Any]) -> list[dict[str, Any]]
                 "input_gam": sample.get("input_gam", ""),
                 "output_gam": sample.get("output_gam", ""),
                 "summary": sample.get("summary", ""),
+                "summary_type": sample.get("summary_type", ""),
                 "exact_template_pair_match": bool(
                     sample.get("exact_template_pair_match")
+                ),
+                "residual_qc_state": sample.get("residual_qc_state", ""),
+                "residual_primary_reads_after_dedup": sample.get(
+                    "residual_primary_reads_after_dedup"
+                ),
+                "residual_duplicate_primary_reads_after_dedup": sample.get(
+                    "residual_duplicate_primary_reads_after_dedup"
+                ),
+                "residual_duplicate_primary_pct_after_dedup": sample.get(
+                    "residual_duplicate_primary_pct_after_dedup"
                 ),
                 "source_input_deleted_after_success": bool(
                     sample.get("source_input_deleted_after_success")
@@ -528,6 +539,33 @@ def build_recommendations(state: Mapping[str, Any]) -> dict[str, Any]:
                 "validate_unconfirmed_gam_outputs",
                 "Output GAMs require EXACT_TEMPLATE_PAIR_MATCH evidence.",
                 scope={"samples": [item["unit_id"] for item in unvalidated]},
+            ))
+        residual_duplicates = [
+            item for item in state["units"]
+            if item.get("residual_qc_state") == "residual_duplicates_detected"
+        ]
+        if residual_duplicates:
+            recommendations.append(_recommendation(
+                "review_observed_residual_duplication",
+                "normal",
+                "review_observed_residual_duplication",
+                "Residual summaries report duplicate primary reads after exact template-pair removal; no downstream acceptance threshold has been approved.",
+                scope={"samples": [item["unit_id"] for item in residual_duplicates]},
+                evidence={
+                    "observations": [
+                        {
+                            "sample": item["unit_id"],
+                            "residual_duplicate_primary_reads": item.get(
+                                "residual_duplicate_primary_reads_after_dedup"
+                            ),
+                            "residual_duplicate_primary_pct": item.get(
+                                "residual_duplicate_primary_pct_after_dedup"
+                            ),
+                            "summary": item.get("summary", ""),
+                        }
+                        for item in residual_duplicates
+                    ]
+                },
             ))
         active = by_state.get("assigned_pending_or_running", [])
         if active:

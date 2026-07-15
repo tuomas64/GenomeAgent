@@ -136,12 +136,39 @@ def list_gams_from_patterns(patterns):
     return index_gams(sorted(set(matches)))
 
 
-def normalize_summary_sample(path):
+SUMMARY_SUFFIXES = (
+    (".dedup_residual_summary.tsv", "dedup_residual_summary"),
+    (".dedup_summary.tsv", "dedup_summary"),
+)
+
+
+def summary_identity(path):
     name = Path(path).name
-    suffix = ".dedup_summary.tsv"
-    if name.lower().endswith(suffix):
-        return name[: -len(suffix)]
-    return normalize_sample(name)
+    lowered = name.lower()
+    for suffix, summary_type in SUMMARY_SUFFIXES:
+        if lowered.endswith(suffix):
+            return name[: -len(suffix)], summary_type
+    return normalize_sample(name), "unknown_summary"
+
+
+def parse_residual_metrics(text):
+    metrics = {
+        "residual_primary_reads_after_dedup": None,
+        "residual_duplicate_primary_reads_after_dedup": None,
+        "residual_duplicate_primary_pct_after_dedup": None,
+    }
+    for line in text.splitlines():
+        if "EXACT_TEMPLATE_PAIR_MATCH" not in line:
+            continue
+        tail = line.split("EXACT_TEMPLATE_PAIR_MATCH", 1)[1]
+        values = re.findall(r"(?:^|\t)([0-9]+(?:\.[0-9]+)?)", tail)
+        if len(values) < 3:
+            continue
+        metrics["residual_primary_reads_after_dedup"] = int(float(values[0]))
+        metrics["residual_duplicate_primary_reads_after_dedup"] = int(float(values[1]))
+        metrics["residual_duplicate_primary_pct_after_dedup"] = float(values[2])
+        break
+    return metrics
 
 
 def list_validation_summaries(patterns, max_bytes=262144):
@@ -159,9 +186,15 @@ def list_validation_summaries(patterns, max_bytes=262144):
             stat = summary.stat()
             with summary.open("rb") as handle:
                 text = handle.read(max_bytes).decode("utf-8", errors="replace")
-            sample = normalize_summary_sample(path)
+            sample, summary_type = summary_identity(path)
+            residual_metrics = (
+                parse_residual_metrics(text)
+                if summary_type == "dedup_residual_summary"
+                else {}
+            )
             grouped.setdefault(sample, []).append({
                 "path": str(summary),
+                "summary_type": summary_type,
                 "size_bytes": stat.st_size,
                 "mtime": time.strftime(
                     "%Y-%m-%dT%H:%M:%S%z", time.localtime(stat.st_mtime)
@@ -172,12 +205,17 @@ def list_validation_summaries(patterns, max_bytes=262144):
                     if "EXACT_TEMPLATE_PAIR_MATCH" in text
                     else "summary_present_without_exact_match"
                 ),
+                **residual_metrics,
             })
         except Exception as exc:
             result["errors"].append(f"{path}: {exc}")
 
     for sample, records in sorted(grouped.items()):
-        records.sort(key=lambda row: row["path"])
+        records.sort(key=lambda row: (
+            not row.get("exact_template_pair_match", False),
+            row.get("summary_type") != "dedup_residual_summary",
+            row["path"],
+        ))
         result["records"][sample] = records[0]
         if len(records) > 1:
             result["duplicates"].append({
@@ -560,6 +598,24 @@ def scan_dataset(spec, project_root, scanned_paths):
         exact_match = bool(
             summary_record and summary_record.get("exact_template_pair_match")
         )
+        summary_type = (summary_record or {}).get("summary_type", "")
+        residual_primary = (summary_record or {}).get(
+            "residual_primary_reads_after_dedup"
+        )
+        residual_duplicates = (summary_record or {}).get(
+            "residual_duplicate_primary_reads_after_dedup"
+        )
+        residual_pct = (summary_record or {}).get(
+            "residual_duplicate_primary_pct_after_dedup"
+        )
+        residual_qc_state = ""
+        if summary_type == "dedup_residual_summary":
+            if residual_duplicates is None or residual_pct is None:
+                residual_qc_state = "residual_qc_present_unparsed"
+            elif residual_duplicates > 0 or residual_pct > 0:
+                residual_qc_state = "residual_duplicates_detected"
+            else:
+                residual_qc_state = "no_residual_duplicates_detected"
 
         if output_exists and exact_match:
             state = "completed_exact_template_pair_match"
@@ -585,8 +641,13 @@ def scan_dataset(spec, project_root, scanned_paths):
             "output_size_bytes": (output_record or {}).get("size_bytes"),
             "summary": (summary_record or {}).get("path", ""),
             "summary_exists": bool(summary_record),
+            "summary_type": summary_type,
             "validation_status": (summary_record or {}).get("validation_status", ""),
             "exact_template_pair_match": exact_match,
+            "residual_qc_state": residual_qc_state,
+            "residual_primary_reads_after_dedup": residual_primary,
+            "residual_duplicate_primary_reads_after_dedup": residual_duplicates,
+            "residual_duplicate_primary_pct_after_dedup": residual_pct,
             "source_input_deleted_after_success": bool(
                 not input_exists and output_exists and exact_match
             ),
@@ -606,6 +667,17 @@ def scan_dataset(spec, project_root, scanned_paths):
             row["state"] == "output_present_unvalidated" for row in samples
         ),
         "validation_summaries": sum(row["summary_exists"] for row in samples),
+        "residual_validation_summaries": sum(
+            row["summary_type"] == "dedup_residual_summary" for row in samples
+        ),
+        "residual_duplicates_detected": sum(
+            row["residual_qc_state"] == "residual_duplicates_detected"
+            for row in samples
+        ),
+        "residual_qc_present_unparsed": sum(
+            row["residual_qc_state"] == "residual_qc_present_unparsed"
+            for row in samples
+        ),
         "source_inputs_deleted_after_success": sum(
             row["source_input_deleted_after_success"] for row in samples
         ),
@@ -797,6 +869,14 @@ class GamDeduplicationProfile:
         missing_total = sum(
             int(item.get("counts", {}).get("missing_inputs", 0)) for item in datasets
         )
+        residual_detected_total = sum(
+            int(item.get("counts", {}).get("residual_duplicates_detected", 0))
+            for item in datasets
+        )
+        residual_unparsed_total = sum(
+            int(item.get("counts", {}).get("residual_qc_present_unparsed", 0))
+            for item in datasets
+        )
 
         failed_states = ("FAILED", "OUT_OF_MEMORY", "TIMEOUT", "CANCELLED", "NODE_FAIL")
         all_failed_jobs = [
@@ -844,6 +924,9 @@ class GamDeduplicationProfile:
             missing = int(counts.get("missing_inputs", 0))
             inputs = int(counts.get("input_gams_nonzero", 0))
             observed = int(counts.get("samples_observed", 0))
+            residual_summaries = int(counts.get("residual_validation_summaries", 0))
+            residual_detected = int(counts.get("residual_duplicates_detected", 0))
+            residual_unparsed = int(counts.get("residual_qc_present_unparsed", 0))
 
             if validated == expected and expected > 0:
                 state = "validated_exact_template_pair_match"
@@ -866,6 +949,9 @@ class GamDeduplicationProfile:
                 "outputs_present_unvalidated": unvalidated,
                 "source_inputs_deleted_after_success": consumed,
                 "missing_inputs": missing,
+                "residual_validation_summaries": residual_summaries,
+                "residual_duplicates_detected": residual_detected,
+                "residual_qc_present_unparsed": residual_unparsed,
             })
 
             if outputs > expected:
@@ -901,6 +987,17 @@ class GamDeduplicationProfile:
             if missing_output:
                 warnings.append(
                     f"{dataset.get('name')}: {missing_output} validation summaries have no output GAM."
+                )
+            if residual_detected:
+                warnings.append(
+                    f"{dataset.get('name')}: {residual_detected} residual summaries report "
+                    "duplicate primary reads after exact template-pair removal; review the "
+                    "measured residual rate before downstream analysis."
+                )
+            if residual_unparsed:
+                warnings.append(
+                    f"{dataset.get('name')}: {residual_unparsed} residual summaries could not "
+                    "be parsed into structured residual-duplication metrics."
                 )
 
         all_ready = bool(dataset_statuses) and all(
@@ -955,6 +1052,8 @@ class GamDeduplicationProfile:
                 "outputs_present_unvalidated": unvalidated_total,
                 "source_inputs_deleted_after_success": consumed_total,
                 "missing_inputs": missing_total,
+                "residual_duplicates_detected": residual_detected_total,
+                "residual_qc_present_unparsed": residual_unparsed_total,
                 "running_relevant_jobs": len(running_jobs),
                 "current_failed_job_records": len(current_failed_jobs),
                 "historical_failed_job_records": len(historical_failed_jobs),
@@ -976,9 +1075,10 @@ class GamDeduplicationProfile:
                 ),
             },
             "validation_boundary": (
-                "A non-empty output GAM with an EXACT_TEMPLATE_PAIR_MATCH deduplication summary "
-                "is accepted as validated duplicate-template accounting. Residual-duplication "
-                "QC remains a separate step before vg pack and vg call."
+                "A non-empty output GAM with an EXACT_TEMPLATE_PAIR_MATCH standard or residual "
+                "deduplication summary is accepted as validated duplicate-template accounting. "
+                "Residual-duplication measurements remain separate QC evidence before vg pack "
+                "and vg call."
             ),
         }
 
@@ -998,7 +1098,8 @@ class GamDeduplicationProfile:
                 "dataset", "status", "expected_samples", "input_gams_nonzero",
                 "outputs_present", "outputs_validated_exact_match",
                 "outputs_present_unvalidated", "source_inputs_deleted_after_success",
-                "missing_inputs",
+                "missing_inputs", "residual_validation_summaries",
+                "residual_duplicates_detected", "residual_qc_present_unparsed",
             ],
         )
 
@@ -1013,8 +1114,12 @@ class GamDeduplicationProfile:
             [
                 "dataset", "sample", "state", "input_gam", "input_exists_nonzero",
                 "input_size_bytes", "output_gam", "output_exists_nonzero",
-                "output_size_bytes", "summary", "summary_exists", "validation_status",
-                "exact_template_pair_match", "source_input_deleted_after_success",
+                "output_size_bytes", "summary", "summary_exists", "summary_type",
+                "validation_status", "exact_template_pair_match", "residual_qc_state",
+                "residual_primary_reads_after_dedup",
+                "residual_duplicate_primary_reads_after_dedup",
+                "residual_duplicate_primary_pct_after_dedup",
+                "source_input_deleted_after_success",
                 "worker_manifests", "in_master_manifest",
             ],
         )
