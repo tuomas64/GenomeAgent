@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.15 (Draft)
+**Current Version:** 1.16 (Draft)
 
 **Last Updated:** July 2026
 
@@ -275,6 +275,28 @@ publish or rename the model, allocate a GPU, perform inference or activate the b
 Successful hashing ends at `verified_ready_for_publication_review`; publication
 requires a separate fresh observation and explicit authorization.
 
+### Controlled model publication
+
+Publication begins with a fresh bounded Roihu-CPU observation that binds the verified
+result and manifest candidate to current staging metadata, confirms that the final
+installation path remains absent and verifies same-filesystem atomic-rename
+feasibility. Observation reads only metadata and small control artifacts; it grants no
+execution authority and expires after 30 minutes.
+
+A content-addressed authorization records the researcher, direct preflight evidence,
+all current local-source digests, verified manifest and result digests, exact Slurm
+request and mutation allow-list. Exact transfer-cache removal and atomic publication
+are confirmed independently. An existing final path, changed input, stale evidence,
+unsafe link or cross-filesystem target blocks submission.
+
+The serial publication job repeats full SHA-256 for every verified model file before
+the first staging mutation. It then removes only the bounded, symlink-free `.cache`
+transfer directory, writes and fsyncs the installed manifest, and performs a
+non-overwriting atomic directory rename. Status observation confirms staging absence,
+final-directory presence, installed manifest identity, exact path-and-size inventory
+and transfer-cache absence. The published model remains inactive until separate
+installed-model evidence, registry review and bounded GPU inference evaluation pass.
+
 ### Public model source metadata
 
 Public model-source metadata is recorded as immutable evidence separately from the
@@ -330,6 +352,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.16 | July 2026 | Added fresh verification-bound publication preflight, separately confirmed cache removal, immediate full re-verification, installed manifests and non-overwriting atomic model publication. |
 | 1.15 | July 2026 | Added exact staged inventory evidence and explicitly authorized serial SHA-256 verification with provider-LFS comparison and a separate publication gate. |
 | 1.14 | July 2026 | Added expiring exact-input download authorization, confined public inbound staging transfer and read-only download status evidence. |
 | 1.13 | July 2026 | Added time-bounded, bundle-bound acquisition runtime, transfer-context, quota and remote target preflight evidence. |

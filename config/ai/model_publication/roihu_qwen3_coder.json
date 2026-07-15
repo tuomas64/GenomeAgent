@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "1.0",
+  "backend_id": "roihu_qwen3_coder",
+  "ssh_host": "roihu",
+  "remote_python": "python3",
+  "worker_python": "/usr/bin/python3",
+  "control_root": "/scratch/project_2001113/.genomeagent/model-publications",
+  "download_cache_directory": ".cache",
+  "installed_manifest_filename": ".genomeagent-model-manifest.json",
+  "limits": {
+    "preflight_timeout_seconds": 180,
+    "preflight_freshness_seconds": 1800,
+    "authorization_validity_seconds": 600,
+    "maximum_inventory_entries": 2000,
+    "maximum_approved_files": 1000,
+    "maximum_manifest_bytes": 2000000,
+    "maximum_command_output_characters": 20000,
+    "hash_chunk_bytes": 8388608,
+    "status_log_tail_bytes": 8000
+  },
+  "slurm": {
+    "account": "project_2001113",
+    "partition": "small",
+    "time_limit": "02:00:00",
+    "nodes": 1,
+    "ntasks": 1,
+    "cpus_per_task": 1,
+    "memory": "4G",
+    "job_name": "GAmodelpublish"
+  },
+  "allowed_remote_mutations": [
+    "create_confined_publication_control_directory",
+    "write_confined_publication_spec_worker_logs_and_results",
+    "submit_one_exact_cpu_publication_job",
+    "remove_exact_staging_download_cache_after_reverification",
+    "write_verified_installed_manifest_into_staging",
+    "atomically_rename_exact_staging_directory_to_installation_path"
+  ],
+  "safety": {
+    "automatic_authorization_allowed": false,
+    "automatic_remote_execution_allowed": false,
+    "automatic_job_submission_allowed": false,
+    "unbounded_remote_deletion_allowed": false,
+    "overwrite_existing_installation_allowed": false,
+    "cross_filesystem_publication_allowed": false,
+    "gpu_allocation_allowed": false,
+    "inference_allowed": false,
+    "training_allowed": false,
+    "registry_update_allowed": false,
+    "backend_activation_allowed": false
+  }
+}

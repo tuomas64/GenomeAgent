@@ -90,6 +90,13 @@ compute SHA-256 for every approved regular file and compare available provider L
 digests. Results and a manifest candidate are written only to a confined control
 directory. Staging mutation, publication, GPU use and inference remain forbidden.
 
+The **Controlled Model Publication Core** binds a fresh read-only preflight to the
+successful verification result and requires explicit approval for exact transfer-cache
+removal and atomic publication. Its serial CPU worker re-hashes every verified file
+immediately before mutation, writes the installed manifest and performs a
+non-overwriting same-filesystem directory rename. GPU use, inference, registry changes
+and backend activation remain separate gates.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -130,6 +137,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Acquisition Runtime Preflight| ✅ Initial reusable core   |
 | Controlled Staging Download | ✅ Initial reusable core   |
 | Staged Integrity Verification| ✅ Initial reusable core   |
+| Controlled Model Publication| ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -385,6 +393,38 @@ python3 scripts/model_integrity_verification.py launch roihu_qwen3_coder \
 The terminal success state is `verified_ready_for_publication_review`; it does not
 publish the model. See the
 [integrity verification documentation](docs/model_integrity_verification.md).
+
+After successful verification, collect and ingest a fresh publication preflight:
+
+```bash
+python3 scripts/model_publication.py collect roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --verification-id <verification-id>
+python3 scripts/model_publication.py ingest roihu_qwen3_coder \
+  --bundle-id <bundle-id>
+```
+
+Publication requires explicit confirmation of both the atomic rename and removal of
+the exact transfer cache:
+
+```bash
+python3 scripts/model_publication.py authorize roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --verification-id <verification-id> \
+  --publication-evidence-id <fresh-evidence-id> \
+  --reviewer <researcher-id> \
+  --confirm-atomic-model-publication \
+  --confirm-remove-download-cache
+
+python3 scripts/model_publication.py launch roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --authorization-id <authorization-id> \
+  --confirm-submit-model-publication
+```
+
+The successful state `published_ready_for_installed_model_evidence` confirms the
+non-overwriting same-filesystem publication but does not activate or run the model.
+See the [controlled publication documentation](docs/controlled_model_publication.md).
 
 ---
 
