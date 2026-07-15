@@ -17,3 +17,7 @@ This milestone demonstrates the intended GenomeAgent cycle:
 ```text
 Task Scan → Task State → Proposal Core → researcher review → execution evidence → improvement
 ```
+
+## Production completion
+
+The proposal subsequently produced a 38 GB whole-genome VCF for 455 samples and passed final sample, contig, index, statistics and checksum validation. Proposal Core v0.1.2 incorporates the final linear-contig and TBI-validation lessons from this completed run.

@@ -75,10 +75,10 @@ class ProposalCoreTests(unittest.TestCase):
 
         policy = {
             "schema_version": "1.0",
-            "proposal_core_version": "0.1.1",
+            "proposal_core_version": "0.1.2",
             "task": "test_task",
             "action": "gather_or_merge",
-            "template_version": "scattered_joint_gather_v2",
+            "template_version": "scattered_joint_gather_v3",
             "authority": {
                 "remote_reads_allowed": False,
                 "remote_writes_allowed": False,
@@ -247,6 +247,10 @@ class ProposalCoreTests(unittest.TestCase):
             self.assertIn("IndexFeatureFile", script)
             self.assertIn("--CREATE_INDEX false", script)
             self.assertNotIn("BASH_SOURCE", script)
+            validation_script = (result.proposal_dir / "scripts/03_validate_final_vcf.slurm").read_text()
+            self.assertIn('tabix -l "${chromosome_vcf}"', validation_script)
+            self.assertIn('tabix -l "${FINAL_VCF}"', validation_script)
+            self.assertNotIn("bcftools index -s", validation_script)
             self.assertNotIn("mapfile", script)
 
     def test_spool_copy_uses_explicit_proposal_dir_and_publishes_indexed_vcf(self):
@@ -290,6 +294,19 @@ class ProposalCoreTests(unittest.TestCase):
             )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn("Automatic execute : disabled", completed.stdout)
+
+
+    def test_production_policy_uses_linear_reference_contigs(self):
+        policy_path = (
+            REPOSITORY_ROOT
+            / "config/proposals/scattered_joint_calling_gather_or_merge.json"
+        )
+        policy = json.loads(policy_path.read_text())
+        expected = {f"chr{index}": f"chr{index}" for index in range(1, 8)}
+        self.assertEqual(policy["reference_contig_map"], expected)
+        self.assertEqual(policy["proposal_core_version"], "0.1.2")
+        self.assertEqual(policy["template_version"], "scattered_joint_gather_v3")
+
 
 
 if __name__ == "__main__":

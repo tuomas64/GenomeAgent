@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "proposal_core_version": "0.1.1",
+  "proposal_core_version": "0.1.2",
   "task": "scattered_joint_calling",
   "action": "gather_or_merge",
   "authority": {
@@ -23,13 +23,13 @@
     "chr7"
   ],
   "reference_contig_map": {
-    "chr1": "H4v6#0#chr1",
-    "chr2": "H4v6#0#chr2",
-    "chr3": "H4v6#0#chr3",
-    "chr4": "H4v6#0#chr4",
-    "chr5": "H4v6#0#chr5",
-    "chr6": "H4v6#0#chr6",
-    "chr7": "H4v6#0#chr7"
+    "chr1": "chr1",
+    "chr2": "chr2",
+    "chr3": "chr3",
+    "chr4": "chr4",
+    "chr5": "chr5",
+    "chr6": "chr6",
+    "chr7": "chr7"
   },
   "reference_fasta": "/scratch/project_2001113/pangenome/Fragaria_vesca_v6_genome.fasta",
   "sample_map": "/scratch/project_2001113/GATK/jointcalling/sample_map.txt",
@@ -57,6 +57,6 @@
       "time_limit": "04:00:00"
     }
   },
-  "template_version": "scattered_joint_gather_v2",
+  "template_version": "scattered_joint_gather_v3",
   "cluster_environment_init": "/appl/profile/zz-csc-env.sh"
 }

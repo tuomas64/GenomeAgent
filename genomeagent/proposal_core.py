@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic, proposal-only workflow adaptation for GenomeAgent.
 
-Proposal Core v0.1.1 consumes canonical Task State and its bound read-only Task
+Proposal Core v0.1.2 consumes canonical Task State and its bound read-only Task
 Scan.  It produces immutable, reviewable workflow proposal bundles.  It has no
 SSH, Slurm submission, execution, deletion, or remote-write authority.
 
@@ -23,9 +23,9 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping, Sequence
 
 
-PROPOSAL_CORE_VERSION = "0.1.1"
+PROPOSAL_CORE_VERSION = "0.1.2"
 PROPOSAL_SCHEMA_VERSION = "1.0"
-SCATTER_GATHER_TEMPLATE_VERSION = "scattered_joint_gather_v2"
+SCATTER_GATHER_TEMPLATE_VERSION = "scattered_joint_gather_v3"
 SUPPORTED_ACTIONS = {"gather_or_merge"}
 COMPLETE_INTERVAL_STATES = {
     "completed",
@@ -852,7 +852,7 @@ for index in "${{!CHROM_VCFS[@]}}"; do
     "${{VALIDATION_DIR}}/$(basename "${{chromosome_vcf}}").samples.txt"
   diff -u "${{VALIDATION_DIR}}/final.samples.txt" \\
     "${{VALIDATION_DIR}}/$(basename "${{chromosome_vcf}}").samples.txt"
-  bcftools index -s "${{chromosome_vcf}}" | cut -f1 > \\
+  tabix -l "${{chromosome_vcf}}" > \\
     "${{VALIDATION_DIR}}/${{chromosome_alias}}.contigs.txt"
   printf '%s\n' "${{expected_contig}}" > \\
     "${{VALIDATION_DIR}}/${{chromosome_alias}}.expected_contig.txt"
@@ -860,7 +860,7 @@ for index in "${{!CHROM_VCFS[@]}}"; do
     "${{VALIDATION_DIR}}/${{chromosome_alias}}.contigs.txt"
 done
 
-bcftools index -s "${{FINAL_VCF}}" | cut -f1 > "${{VALIDATION_DIR}}/final.contigs.txt"
+tabix -l "${{FINAL_VCF}}" > "${{VALIDATION_DIR}}/final.contigs.txt"
 printf '%s\n' "${{EXPECTED_CONTIGS[@]}}" > "${{VALIDATION_DIR}}/expected.contigs.txt"
 diff -u "${{VALIDATION_DIR}}/expected.contigs.txt" "${{VALIDATION_DIR}}/final.contigs.txt"
 

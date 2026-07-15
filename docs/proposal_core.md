@@ -1,4 +1,4 @@
-# Proposal Core v0.1.1
+# Proposal Core v0.1.2
 
 Proposal Core converts evidence-grounded Task State into immutable, reviewable workflow proposals. It is deliberately separate from execution.
 
@@ -110,3 +110,12 @@ The proposal ID is content-addressed from the policy, canonical state, recommend
 ## Resource boundary
 
 The proposal contains conservative provisional Slurm values. It does not claim that Resource Evidence and Learning Core has established an optimal gather profile. Resources remain subject to researcher review and cannot be changed automatically.
+
+## Validation portability added in v0.1.2
+
+The completed production run exposed two final validation assumptions:
+
+1. GATK-created TBI indexes are valid even when they do not contain optional bcftools record-count metadata. Generated validators therefore use `tabix -l` rather than `bcftools index -s` for contig discovery.
+2. The linear joint-calling VCF uses `chr1`–`chr7`. Expected contigs are taken from the workflow-specific proposal policy rather than graph path names.
+
+Both conditions are covered by regression tests.
