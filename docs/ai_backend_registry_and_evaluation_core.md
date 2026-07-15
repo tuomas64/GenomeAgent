@@ -21,6 +21,10 @@ module has been observed, but the model revision, installed model inventory dige
 local path and benchmark performance have not been verified. The registry therefore
 reports `not_ready`. This is a meaningful evidence state, not an error.
 
+The separate [Read-only AI Backend Evidence Collector](ai_backend_evidence_collector.md)
+can verify the current Roihu-GPU environment and model-path state. Its immutable
+observations do not modify this registry automatically.
+
 ## Validate the registry
 
 From the repository root:

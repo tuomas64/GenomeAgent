@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.6 (Draft)
+**Current Version:** 1.7 (Draft)
 
 **Last Updated:** July 2026
 
@@ -171,6 +171,14 @@ Prepared AI run packages and evaluations are content-addressed, immutable derive
 
 Local and external AI backends require separate registry entries, data policies and evaluations. GenomeAgent must never send project data to an external provider through silent fallback. Any future fallback requires explicit researcher choice, an allowed data classification and recorded provenance. Local inference likewise requires a pinned model revision, verified model artifacts, a bounded resource request and explicit approval before job submission.
 
+### AI backend environment observations
+
+Backend configuration and observed backend state remain separate. The read-only AI Backend Evidence Collector records bounded login-host identity, architecture, exact runtime-module metadata, Slurm partition metadata, storage availability and shallow model-path inventory. It does not allocate a GPU, test inference, download or import a model, recursively enumerate model storage or hash large weight files.
+
+Each immutable observation retains the backend and collection-policy digests used at collection time. Current readiness is a deterministic, replaceable view rebuilt from those snapshots. Changed configuration makes older evidence stale; it is never silently reinterpreted as current. Observed environment compatibility, verified model identity and integrity, benchmark performance and execution authority are independent gates.
+
+Backend evidence may contain cluster hostnames, project paths, module names, quota summaries and model filenames. It is retained locally under the ignored `workspace/` tree and must be reviewed before public release. Credentials, private keys, SSH certificates and access tokens are never collection targets and must not be stored in backend configuration or evidence.
+
 ## Responsible HPC Usage
 
 GenomeAgent benchmarks new workflows before scaling, monitors representative and exceptional analyses, compares requested resources with measured use, estimates future requirements from comparable jobs, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage and scheduler load.
@@ -195,6 +203,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.7 | July 2026 | Added bounded read-only AI backend environment observations, shallow model inventory policy, stale-evidence handling, local retention controls and independent environment/model/benchmark gates. |
 | 1.6 | July 2026 | Added versioned AI backend, prompt and benchmark records; immutable evaluation evidence; model identity requirements; data-classification controls; and explicit local-versus-external fallback governance. |
 | 1.5 | July 2026 | Added deterministic Brain v2 knowledge promotion, immutable claim snapshots, AI-candidate isolation and environment-aware workflow transfer gates. |
 | 1.4 | July 2026 | Added source-environment isolation, deterministic cross-environment resource decisions, explicit no-evidence outcomes and target-pilot safety requirements. |

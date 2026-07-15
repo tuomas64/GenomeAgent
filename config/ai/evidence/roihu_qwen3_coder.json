@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "1.0",
+  "backend_id": "roihu_qwen3_coder",
+  "remote_python": "python3",
+  "project_storage_root": "/scratch/project_2001113",
+  "module_initialization_candidates": [
+    "/appl/profile/zz-csc-env.sh"
+  ],
+  "model_inventory_manifest": ".genomeagent-model-manifest.json",
+  "checks": {
+    "identity": true,
+    "module_metadata": true,
+    "scheduler_partition": true,
+    "project_storage": true,
+    "model_top_level_inventory": true,
+    "workspace_quota_command": true
+  },
+  "limits": {
+    "timeout_seconds": 90,
+    "maximum_command_output_characters": 12000,
+    "maximum_model_entries": 200,
+    "maximum_small_metadata_file_bytes": 1048576
+  },
+  "safety": {
+    "remote_writes_allowed": false,
+    "job_submission_allowed": false,
+    "gpu_allocation_allowed": false,
+    "model_download_allowed": false,
+    "model_import_allowed": false,
+    "recursive_model_scan_allowed": false,
+    "large_model_file_hashing_allowed": false
+  }
+}

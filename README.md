@@ -44,6 +44,8 @@ The **Resource Evidence and Learning Core** records bounded Slurm accounting for
 
 The **AI Backend Registry and Evaluation Core** versions candidate inference backends, prompts and non-sensitive benchmark suites. It prepares content-addressed run packages and scores returned model responses deterministically while keeping model download, Slurm submission, generated-code execution, external fallback and Brain knowledge promotion disabled.
 
+The **Read-only AI Backend Evidence Collector** checks a registered backend against its actual HPC environment using one bounded SSH observation. It verifies architecture, module metadata, scheduler partition metadata, storage and a shallow model-path inventory, then rebuilds current readiness locally without downloading models, allocating a GPU or editing the registry.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -76,6 +78,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Brain v2 Knowledge Promotion| ✅ Initial reusable core   |
 | Workflow Transfer Planning  | ✅ Initial reusable core   |
 | AI Backend Evaluation       | ✅ Initial reusable core   |
+| AI Backend Evidence         | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -181,6 +184,20 @@ This records what would need to be evaluated but does not connect to Roihu, down
 model, create a runnable Slurm script or execute inference. Returned JSONL evidence can
 later be scored with `scripts/ai_benchmark.py evaluate`; even a passing suite remains
 review-only. See the [AI Backend Registry and Evaluation Core documentation](docs/ai_backend_registry_and_evaluation_core.md).
+
+Collect current read-only evidence from the registered Roihu-GPU environment and then
+derive its canonical state locally:
+
+```bash
+python3 scripts/ai_backend_evidence.py collect roihu_qwen3_coder
+python3 scripts/ai_backend_evidence.py ingest roihu_qwen3_coder
+```
+
+The collector uses one bounded SSH session and performs no remote writes, model
+downloads, GPU allocations, Slurm submissions, recursive model scans or large-file
+hashing. Evidence and current state are stored separately under
+`workspace/ai_backend_evidence/` and `workspace/ai_backend_state/`. See the
+[AI Backend Evidence Collector documentation](docs/ai_backend_evidence_collector.md).
 
 ---
 
