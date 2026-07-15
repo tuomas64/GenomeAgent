@@ -75,6 +75,14 @@ public-model transfer context, checks fresh quota and target-path safety, and co
 the future `gputest`/GH200 launch context. Its evidence expires after 30 minutes and
 never grants download, submission, publication or activation authority.
 
+The **Controlled Public Model Download Core** converts one unexpired preflight into a
+ten-minute, researcher-issued authorization for one exact mutation: download the
+approved public repository revision into the bundle's hidden staging directory. It
+launches a resumable two-worker background transfer on the registered Roihu login
+host, explicitly removes token variables, and records read-only status observations.
+It cannot hash model files, publish the staged directory, submit Slurm, allocate a GPU
+or run the model.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -113,6 +121,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Model Source Approval       | ✅ Initial reusable core   |
 | Acquisition Approval/Bundle | ✅ Initial reusable core   |
 | Acquisition Runtime Preflight| ✅ Initial reusable core   |
+| Controlled Staging Download | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -311,6 +320,32 @@ python3 scripts/model_acquisition_preflight.py ingest roihu_qwen3_coder \
 The collector imports but never calls `snapshot_download`, performs no provider
 request and expires its evidence after 30 minutes. See the
 [acquisition runtime preflight documentation](docs/model_acquisition_runtime_preflight.md).
+
+After collecting a fresh preflight, explicitly authorize and launch only the staging
+download with:
+
+```bash
+python3 scripts/model_acquisition_download.py authorize roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --preflight-evidence-id <fresh-evidence-id> \
+  --reviewer <researcher-id> \
+  --confirm-public-model-download
+
+python3 scripts/model_acquisition_download.py launch roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --authorization-id <authorization-id> \
+  --confirm-execute-approved-download
+```
+
+Observe the background transfer without modifying it:
+
+```bash
+python3 scripts/model_acquisition_download.py status roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --authorization-id <authorization-id>
+```
+
+See the [controlled staging download documentation](docs/controlled_model_download.md).
 
 ---
 

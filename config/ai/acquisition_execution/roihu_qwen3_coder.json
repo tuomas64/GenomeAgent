@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "1.0",
+  "backend_id": "roihu_qwen3_coder",
+  "remote_python": "python3",
+  "authorization_validity_seconds": 600,
+  "control_root": "/scratch/project_2001113/.genomeagent/acquisitions",
+  "module_initialization": "/usr/share/lmod/lmod/init/bash",
+  "module_use_paths": [
+    "/appl/modulefiles/manual/aida/aarch64"
+  ],
+  "download": {
+    "method": "huggingface_hub.snapshot_download",
+    "public_repository_only": true,
+    "token_mode": "explicitly_disabled",
+    "max_workers": 2,
+    "background_process": true,
+    "staging_only": true,
+    "hash_during_download": false,
+    "publish_after_download": false
+  },
+  "allowed_remote_mutations": [
+    "create_confined_control_directory",
+    "write_confined_execution_metadata_and_logs",
+    "create_confined_model_parent_directories",
+    "create_exact_bundle_staging_directory",
+    "download_exact_public_repository_revision_into_staging"
+  ],
+  "safety": {
+    "automatic_authorization_allowed": false,
+    "automatic_remote_execution_allowed": false,
+    "automatic_model_download_allowed": false,
+    "credential_use_allowed": false,
+    "project_data_egress_allowed": false,
+    "remote_deletion_allowed": false,
+    "model_hashing_allowed": false,
+    "publication_allowed": false,
+    "job_submission_allowed": false,
+    "gpu_allocation_allowed": false,
+    "inference_allowed": false,
+    "training_allowed": false,
+    "registry_update_allowed": false,
+    "backend_activation_allowed": false
+  }
+}

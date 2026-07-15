@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.13 (Draft)
+**Current Version:** 1.14 (Draft)
 
 **Last Updated:** July 2026
 
@@ -232,6 +232,27 @@ after 30 minutes and configuration or bundle changes make it stale. Even a fully
 verified preflight retains `fresh_execution_authorization_missing`; observation never
 becomes execution authority.
 
+### Controlled public model staging download
+
+A model download requires a new content-addressed researcher authorization bound to
+the exact acquisition bundle, every current input-artifact digest and one unexpired
+preflight observation. The authorization expires after at most ten minutes and permits
+only the approved public repository revision to enter the bundle's hidden staging
+directory. Reusing a different host, revision, bundle, policy or evidence digest is
+rejected.
+
+The launcher creates only confined control metadata, logs, missing model-parent
+directories and the exact staging directory. It removes model-provider token variables,
+passes `token=False`, limits transfer concurrency to two workers and records the
+background process. It cannot read project data for transfer, delete remote data, hash
+model files, publish the final directory, submit jobs, allocate GPUs, infer, train,
+update the registry or activate a backend.
+
+A successful transfer is classified as `download_completed_unverified`. Download
+completion is not installation: exact path and size validation, full local SHA-256,
+provider LFS digest comparison, manifest construction and atomic publication remain a
+separate compute-stage review and authorization boundary.
+
 ### Public model source metadata
 
 Public model-source metadata is recorded as immutable evidence separately from the
@@ -287,6 +308,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.14 | July 2026 | Added expiring exact-input download authorization, confined public inbound staging transfer and read-only download status evidence. |
 | 1.13 | July 2026 | Added time-bounded, bundle-bound acquisition runtime, transfer-context, quota and remote target preflight evidence. |
 | 1.12 | July 2026 | Added exact-plan acquisition-preparation approvals, data-only execution bundles, truthful provider-versus-local digest semantics and independent runtime, target-state and fresh-execution gates. |
 | 1.11 | July 2026 | Added explicit absolute environment bindings for authoritative project-quota commands, bounded direct execution and rejection of generic filesystem availability as a quota substitute. |
