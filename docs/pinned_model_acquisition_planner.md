@@ -41,9 +41,12 @@ An acquisition source is sufficiently pinned only when it records:
 - the inventory's total byte size;
 - a reviewed and accepted license identifier matching the backend registry.
 
-The planner's `source_metadata_request.json` describes the evidence a future bounded
-metadata collector must obtain. It is a data request, not an executable provider
-command.
+The planner's `source_metadata_request.json` describes the evidence the separate
+[Read-only Model Source Metadata Collector](model_source_metadata_collector.md)
+must obtain. It is a data request, not an executable provider command. Public provider
+metadata supplies the immutable revision, complete path/size inventory, Git blob IDs
+and available LFS SHA-256 values. A later approved acquisition step must still compute
+and verify SHA-256 for every downloaded regular file before publication.
 
 ## Storage reasoning
 
@@ -92,6 +95,16 @@ First collect and ingest current backend evidence, then run:
 ```bash
 python3 scripts/model_acquisition.py plan roihu_qwen3_coder
 ```
+
+When the plan requests source identity resolution, collect and ingest bounded public
+metadata separately:
+
+```bash
+python3 scripts/model_source_metadata.py collect roihu_qwen3_coder
+python3 scripts/model_source_metadata.py ingest roihu_qwen3_coder
+```
+
+This produces a review-only proposal. It never edits the acquisition specification.
 
 Artifacts are stored under a content-addressed directory:
 

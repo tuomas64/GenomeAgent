@@ -14,6 +14,7 @@ performing reproducible genomics analyses on HPC systems.
 - [AI Backend Registry and Evaluation Core](ai_backend_registry_and_evaluation_core.md)
 - [Read-only AI Backend Evidence Collector](ai_backend_evidence_collector.md)
 - [Pinned Model Acquisition Planning Core](pinned_model_acquisition_planner.md)
+- [Read-only Model Source Metadata Collector](model_source_metadata_collector.md)
 - [Data and Knowledge Management Plan](data_and_knowledge_management_plan.md)
 - [Design philosophy](philosophy.md)
 - [Roadmap](roadmap.md)

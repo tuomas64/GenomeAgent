@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "1.0",
+  "backend_id": "roihu_qwen3_coder",
+  "provider": "huggingface_hub",
+  "endpoint": "https://huggingface.co",
+  "repository": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+  "requested_revision": "main",
+  "limits": {
+    "timeout_seconds": 30,
+    "maximum_requests": 2,
+    "maximum_response_bytes": 5242880,
+    "maximum_files": 1000
+  },
+  "safety": {
+    "public_metadata_queries_allowed": true,
+    "repository_file_download": false,
+    "model_weight_download": false,
+    "remote_cluster_access": false,
+    "remote_cluster_writes": false,
+    "job_submission": false,
+    "gpu_allocation": false,
+    "large_file_hashing": false,
+    "automatic_specification_update": false,
+    "automatic_registry_update": false,
+    "automatic_backend_activation": false
+  }
+}

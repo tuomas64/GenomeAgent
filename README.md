@@ -51,6 +51,12 @@ review-only source identity, storage and integrity plan. Unknown model revisions
 inventories, sizes and licenses remain blocking unknowns; the planner does not contact a
 provider, download weights or grant execution authority.
 
+The **Read-only Model Source Metadata Collector** resolves a registered public model's
+symbolic revision to an immutable commit and records its provider inventory, byte size,
+license metadata and canonical inventory digest. It performs exactly two bounded public
+metadata requests and produces a review-only acquisition-specification proposal; it
+does not download repository files, accept a license or update configuration.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -85,6 +91,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | AI Backend Evaluation       | ✅ Initial reusable core   |
 | AI Backend Evidence         | ✅ Initial reusable core   |
 | Model Acquisition Planning  | ✅ Initial reusable core   |
+| Model Source Metadata       | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -219,6 +226,20 @@ provider inventory have been reviewed. It does not contact the model provider or
 Roihu, download weights, hash large files, submit jobs, update the backend registry or
 activate a model. See the
 [model acquisition planning documentation](docs/pinned_model_acquisition_planner.md).
+
+Resolve the registered public source identity and rebuild its local review state with:
+
+```bash
+python3 scripts/model_source_metadata.py collect roihu_qwen3_coder
+python3 scripts/model_source_metadata.py ingest roihu_qwen3_coder
+```
+
+The collector makes one bounded symbolic-revision request and one immutable-revision
+confirmation request to the registered Hugging Face repository. It records file
+metadata, not file contents, and writes an acquisition-specification proposal without
+applying it. License acceptance, model download, Roihu access, Slurm submission, GPU
+allocation and backend activation remain disabled. See the
+[model source metadata documentation](docs/model_source_metadata_collector.md).
 
 ---
 

@@ -418,7 +418,7 @@ def _metadata_request(
             "complete_repository_file_inventory",
             "file_size_bytes",
             "git_lfs_sha256_for_weight_files",
-            "sha256_for_small_configuration_and_tokenizer_files",
+            "git_blob_id_for_regular_files",
             "canonical_source_inventory_sha256",
             "source_total_bytes",
         ],

@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.8 (Draft)
+**Current Version:** 1.9 (Draft)
 
 **Last Updated:** July 2026
 
@@ -187,6 +187,25 @@ Acquisition plans are content-addressed immutable artifacts derived from the bac
 
 The integrity contract requires an immutable source revision, complete recursive file inventory, SHA-256 evidence for every regular file, rejection of external symlink targets, same-filesystem staging and atomic final-directory publication. Large-file hashing, download and publication are future approved execution steps; the planner performs none of them. Backend registry identity, verified local model inventory and benchmark status are updated only through separate evidence and researcher-review gates.
 
+### Public model source metadata
+
+Public model-source metadata is recorded as immutable evidence separately from the
+backend registry, acquisition specification and downloaded model files. A collection
+records the requested symbolic revision, immutable resolved commit, complete provider
+path and size inventory, available Git blob or LFS identifiers, license metadata,
+provider response digests, collection limits and configuration provenance.
+
+The canonical source-inventory digest identifies the normalized metadata inventory; it
+is not presented as a digest of the downloaded model contents. Provider-supplied LFS
+SHA-256 values are retained when available, while missing provider checksums remain an
+explicit limitation. A later approved acquisition process must inventory and compute
+SHA-256 for every downloaded regular file before atomic publication and activation.
+
+Source observation cannot accept a model license or silently edit an acquisition
+specification. It produces a proposal containing observed values and a direct license
+review target. A researcher must review the immutable revision, inventory, capacity
+implications and license before those values become authoritative configuration.
+
 ## Responsible HPC Usage
 
 GenomeAgent benchmarks new workflows before scaling, monitors representative and exceptional analyses, compares requested resources with measured use, estimates future requirements from comparable jobs, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage and scheduler load.
@@ -211,6 +230,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.9 | July 2026 | Added bounded public model-source metadata observations, immutable revision confirmation, canonical inventory evidence, provider-checksum limitations and review-only acquisition-specification proposals. |
 | 1.8 | July 2026 | Added content-addressed pinned-model acquisition planning, source identity and license gates, transparent storage lower bounds, full-file integrity contracts and atomic publication requirements. |
 | 1.7 | July 2026 | Added bounded read-only AI backend environment observations, shallow model inventory policy, stale-evidence handling, local retention controls and independent environment/model/benchmark gates. |
 | 1.6 | July 2026 | Added versioned AI backend, prompt and benchmark records; immutable evaluation evidence; model identity requirements; data-classification controls; and explicit local-versus-external fallback governance. |
