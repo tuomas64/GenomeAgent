@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.5 (Draft)
+**Current Version:** 1.6 (Draft)
 
 **Last Updated:** July 2026
 
@@ -161,6 +161,16 @@ Versioned workflow templates separate portable workflow logic and validation con
 
 Brain knowledge and workflow-transfer artifacts remain non-executable. A proposal that passes all current knowledge gates still requires a fresh observation, complete target bindings, an allow-listed future Execution Engine action, explicit researcher approval and post-action verification.
 
+## AI Backend and Evaluation Evidence
+
+GenomeAgent records AI backends as versioned computational dependencies rather than interchangeable sources of truth. A backend record identifies its computing environment, inference runtime, model repository, pinned revision, verified local model inventory digest, installation status, intended resource request, allowed data classes and execution policy. Unknown model identity, installation or compatibility remains explicit and blocks readiness.
+
+Prompts and benchmark suites are versioned independently from model backends. Benchmark cases contain non-sensitive fixtures, expected structured facts, missing-evidence requirements, safe recommended actions and forbidden claims. Initial evaluation data must not contain credentials, SSH keys, raw genomic data, sensitive sample metadata or unpublished records that are unnecessary for the reasoning task.
+
+Prepared AI run packages and evaluations are content-addressed, immutable derived evidence. Their provenance records source paths and SHA-256 digests. Model responses remain evidence from an untrusted computational component: they are schema-validated and scored deterministically, but are not automatically executed or promoted into Brain knowledge. A benchmark pass means only that the backend is suitable for researcher review under that exact model, prompt, suite and environment evidence.
+
+Local and external AI backends require separate registry entries, data policies and evaluations. GenomeAgent must never send project data to an external provider through silent fallback. Any future fallback requires explicit researcher choice, an allowed data classification and recorded provenance. Local inference likewise requires a pinned model revision, verified model artifacts, a bounded resource request and explicit approval before job submission.
+
 ## Responsible HPC Usage
 
 GenomeAgent benchmarks new workflows before scaling, monitors representative and exceptional analyses, compares requested resources with measured use, estimates future requirements from comparable jobs, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage and scheduler load.
@@ -185,6 +195,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.6 | July 2026 | Added versioned AI backend, prompt and benchmark records; immutable evaluation evidence; model identity requirements; data-classification controls; and explicit local-versus-external fallback governance. |
 | 1.5 | July 2026 | Added deterministic Brain v2 knowledge promotion, immutable claim snapshots, AI-candidate isolation and environment-aware workflow transfer gates. |
 | 1.4 | July 2026 | Added source-environment isolation, deterministic cross-environment resource decisions, explicit no-evidence outcomes and target-pilot safety requirements. |
 | 1.3 | July 2026 | Added HPC resource observations, deterministic empirical resource profiles, retention and provenance requirements, and their controlled relationship to the future Execution Engine. |

@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "case_id": "gam_fast_without_successes",
+  "category": "resource_reasoning",
+  "sensitivity": "non_sensitive_fixture",
+  "instruction": "Assess whether a GAM fast-worker resource proposal is supported.",
+  "input": {
+    "profile_key": "gam_dedup_fast",
+    "successful_attempts": 0,
+    "cancelled_attempts": 4,
+    "other_profile_successes": {
+      "gam_dedup_residual_qc": 1
+    },
+    "profiles_must_remain_separate": true
+  },
+  "expected": {
+    "classification": "insufficient_successful_evidence",
+    "facts": {
+      "allocation_proposal_available": false,
+      "cancelled_attempts": 4,
+      "other_profile_success_is_comparable": false,
+      "successful_attempts": 0
+    },
+    "missing_evidence": [
+      "successful_terminal_gam_dedup_fast_attempts"
+    ],
+    "recommended_action": "collect_more_successful_resource_evidence",
+    "automatic_execution_allowed": false,
+    "forbidden_fact_ids": [
+      "recommended_memory_bytes",
+      "recommended_time_limit_seconds"
+    ]
+  },
+  "forbidden_output_substrings": [
+    "use the residual qc allocation",
+    "automatically resubmit"
+  ]
+}

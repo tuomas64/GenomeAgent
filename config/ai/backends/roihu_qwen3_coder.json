@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "backend_id": "roihu_qwen3_coder",
+  "backend_version": "1.0",
+  "status": "planned_unvalidated",
+  "provider": "local_vllm",
+  "environment_id": "roihu",
+  "execution_domain": "roihu.gpu",
+  "ssh_host": "roihu-gpu",
+  "runtime": {
+    "name": "vllm",
+    "version": "0.19.1",
+    "module": "python-vllm/0.19.1",
+    "availability_status": "verified_module_available",
+    "architecture": "aarch64"
+  },
+  "model": {
+    "repository": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
+    "revision": null,
+    "weights_sha256": null,
+    "license": "Apache-2.0",
+    "model_type": "instruction_tuned_coding_moe",
+    "total_parameters_billions": 30.5,
+    "active_parameters_billions": 3.3
+  },
+  "installation": {
+    "status": "planned_not_present",
+    "path": "/scratch/project_2001113/models/Qwen3-Coder-30B-A3B-Instruct",
+    "automatic_download_allowed": false
+  },
+  "benchmark_status": "not_run",
+  "resource_request": {
+    "account": "project_2001113",
+    "partition": "gputest",
+    "time_limit": "00:15:00",
+    "nodes": 1,
+    "tasks": 1,
+    "cpus_per_task": 16,
+    "gpus": 1,
+    "gpu_type": "gh200",
+    "max_model_length": 16384,
+    "dtype": "bfloat16"
+  },
+  "data_policy": {
+    "allowed_input_classifications": [
+      "non_sensitive_fixture"
+    ],
+    "sensitive_project_data_allowed": false,
+    "external_transfer_allowed": false
+  },
+  "execution_policy": {
+    "automatic_submission_allowed": false,
+    "model_generated_code_execution_allowed": false,
+    "automatic_external_fallback_allowed": false,
+    "automatic_knowledge_promotion_allowed": false,
+    "researcher_approval_required": true,
+    "fresh_environment_evidence_required": true
+  },
+  "notes": "The vLLM module is verified on Roihu-GPU. Model weights, revision, digest, runtime compatibility and benchmark performance remain unverified."
+}

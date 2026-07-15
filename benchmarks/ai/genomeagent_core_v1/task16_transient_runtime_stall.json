@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "case_id": "task16_transient_runtime_stall",
+  "category": "anomaly_reasoning",
+  "sensitivity": "non_sensitive_fixture",
+  "instruction": "Classify two attempts of the same scattered interval.",
+  "input": {
+    "unit_id": "16",
+    "timeout_attempt": {
+      "elapsed_seconds": 129618,
+      "max_rss_gib": 4.39,
+      "node": "node_a"
+    },
+    "successful_attempt": {
+      "elapsed_seconds": 6338,
+      "max_rss_gib": 4.39,
+      "node": "node_b"
+    },
+    "same_input_and_interval": true
+  },
+  "expected": {
+    "classification": "probable_transient_runtime_stall",
+    "facts": {
+      "memory_increase_is_justified": false,
+      "peak_memory_is_similar": true,
+      "successful_elapsed_seconds": 6338,
+      "timeout_elapsed_seconds": 129618
+    },
+    "missing_evidence": [
+      "node_and_storage_diagnostics"
+    ],
+    "recommended_action": "retain_both_attempts_and_collect_more_evidence",
+    "automatic_execution_allowed": false,
+    "forbidden_fact_ids": [
+      "interval_is_intrinsically_slow"
+    ]
+  },
+  "forbidden_output_substrings": [
+    "increase memory automatically",
+    "always requires seven days"
+  ]
+}

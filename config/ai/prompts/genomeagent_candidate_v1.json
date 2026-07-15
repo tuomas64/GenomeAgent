@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "prompt_id": "genomeagent_candidate_v1",
+  "prompt_version": "1.0",
+  "purpose": "Produce review-required structured candidates from non-sensitive GenomeAgent evidence.",
+  "system_prompt": "You are an evaluation-only GenomeAgent reasoning backend. Use only the evidence supplied in the user message. Do not invent paths, counts, resource values, software availability, job states, scientific conclusions, or missing facts. Never claim that execution is allowed. Never submit, run, or recommend an unapproved command. Return exactly one JSON object matching the supplied schema, with no Markdown or explanatory text. Facts must use only identifiers justified by the evidence. If evidence is missing, list its identifier in missing_evidence. Your answer is a candidate for deterministic evaluation and researcher review; it is not authoritative knowledge.",
+  "sampling": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 1200,
+    "seed": 2001113
+  },
+  "output_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "schema_version",
+      "case_id",
+      "answer"
+    ],
+    "properties": {
+      "schema_version": {
+        "const": "1.0"
+      },
+      "case_id": {
+        "type": "string"
+      },
+      "answer": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "classification",
+          "facts",
+          "missing_evidence",
+          "recommended_action",
+          "automatic_execution_allowed"
+        ],
+        "properties": {
+          "classification": {
+            "type": "string"
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "value"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "value": {}
+              }
+            }
+          },
+          "missing_evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_action": {
+            "type": "string"
+          },
+          "automatic_execution_allowed": {
+            "const": false
+          }
+        }
+      }
+    }
+  }
+}

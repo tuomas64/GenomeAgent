@@ -11,6 +11,7 @@ performing reproducible genomics analyses on HPC systems.
 - [Explorer Core](explorer_core.md)
 - [Reusable Task Scanner Core](task_scanner_core.md)
 - [Task State and Knowledge Bridge](task_state_bridge.md)
+- [AI Backend Registry and Evaluation Core](ai_backend_registry_and_evaluation_core.md)
 - [Data and Knowledge Management Plan](data_and_knowledge_management_plan.md)
 - [Design philosophy](philosophy.md)
 - [Roadmap](roadmap.md)

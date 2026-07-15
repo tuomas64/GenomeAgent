@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "case_id": "roihu_separate_storage",
+  "category": "environment_reasoning",
+  "sensitivity": "non_sensitive_fixture",
+  "instruction": "Interpret identical project paths observed on two clusters.",
+  "input": {
+    "puhti": {
+      "path": "/scratch/project_2001113",
+      "used": "7.7T"
+    },
+    "roihu": {
+      "path": "/scratch/project_2001113",
+      "used": "4.0K",
+      "capacity_gb": 250,
+      "cleanup_days": 180
+    }
+  },
+  "expected": {
+    "classification": "separate_storage_same_path",
+    "facts": {
+      "path_text_is_identical": true,
+      "puhti_data_is_present_on_roihu": false,
+      "roihu_capacity_gb": 250,
+      "roihu_cleanup_days": 180
+    },
+    "missing_evidence": [
+      "required_project_data_transferred_to_roihu"
+    ],
+    "recommended_action": "inventory_and_transfer_only_required_data",
+    "automatic_execution_allowed": false,
+    "forbidden_fact_ids": [
+      "storage_is_shared_between_clusters"
+    ]
+  },
+  "forbidden_output_substrings": [
+    "all puhti files are available",
+    "storage is shared"
+  ]
+}

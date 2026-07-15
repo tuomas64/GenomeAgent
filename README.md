@@ -42,6 +42,8 @@ The **Task State Bridge** replays those immutable observations into canonical cu
 
 The **Resource Evidence and Learning Core** records bounded Slurm accounting for explicit jobs and deterministically learns empirical runtime, peak-memory and efficiency profiles. It preserves failed attempts as censored evidence, flags cross-attempt anomalies and produces proposal-only recommendations that cannot change scheduler resources or execute jobs.
 
+The **AI Backend Registry and Evaluation Core** versions candidate inference backends, prompts and non-sensitive benchmark suites. It prepares content-addressed run packages and scores returned model responses deterministically while keeping model download, Slurm submission, generated-code execution, external fallback and Brain knowledge promotion disabled.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -73,6 +75,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Resource Evidence Learning  | ✅ Initial reusable core   |
 | Brain v2 Knowledge Promotion| ✅ Initial reusable core   |
 | Workflow Transfer Planning  | ✅ Initial reusable core   |
+| AI Backend Evaluation       | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -158,6 +161,26 @@ python3 scripts/brain.py plan-workflow scattered_joint_calling \
 ```
 
 Knowledge snapshots are content-addressed under `workspace/brain_knowledge/<task>/`. The transfer planner reports compatible, unknown and incompatible requirements separately and consumes the existing deterministic resource decision as a gate. Brain v1 AI output, when present, remains a review-required candidate and is never silently promoted. See the [Brain v2 documentation](docs/brain_knowledge_and_workflow_transfer_v2.md).
+
+Validate the AI backend, prompt and benchmark registries with:
+
+```bash
+python3 scripts/ai_benchmark.py validate
+```
+
+Prepare an immutable, non-executable benchmark package for the planned Roihu-GPU
+candidate with:
+
+```bash
+python3 scripts/ai_benchmark.py prepare \
+  --backend roihu_qwen3_coder \
+  --suite genomeagent_core_v1
+```
+
+This records what would need to be evaluated but does not connect to Roihu, download a
+model, create a runnable Slurm script or execute inference. Returned JSONL evidence can
+later be scored with `scripts/ai_benchmark.py evaluate`; even a passing suite remains
+review-only. See the [AI Backend Registry and Evaluation Core documentation](docs/ai_backend_registry_and_evaluation_core.md).
 
 ---
 

@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "case_id": "gam_residual_duplication",
+  "category": "workflow_state_reasoning",
+  "sensitivity": "non_sensitive_fixture",
+  "instruction": "Interpret exact template-pair removal and residual duplicate QC together.",
+  "input": {
+    "sample": "swedish:AT02",
+    "output_present": true,
+    "exact_template_pair_match": true,
+    "source_input_deleted_after_success": true,
+    "residual_duplicate_primary_pct_after_dedup": 4.58789,
+    "approved_residual_acceptance_threshold": null
+  },
+  "expected": {
+    "classification": "completed_with_residual_duplicates_detected",
+    "facts": {
+      "deduplication_completed": true,
+      "residual_duplicates_are_after_template_pair_removal": true,
+      "residual_duplicate_primary_pct": 4.58789,
+      "threshold_approved": false
+    },
+    "missing_evidence": [
+      "approved_residual_duplication_threshold"
+    ],
+    "recommended_action": "review_residual_duplication_without_reprocessing",
+    "automatic_execution_allowed": false,
+    "forbidden_fact_ids": [
+      "deduplication_failed",
+      "sample_requires_automatic_reprocessing"
+    ]
+  },
+  "forbidden_output_substrings": [
+    "deduplication failed",
+    "automatically reprocess"
+  ]
+}

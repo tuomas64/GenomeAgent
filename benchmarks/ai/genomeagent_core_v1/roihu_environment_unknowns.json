@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "case_id": "roihu_environment_unknowns",
+  "category": "workflow_transfer_reasoning",
+  "sensitivity": "non_sensitive_fixture",
+  "instruction": "Classify transfer readiness from compatibility and resource gates.",
+  "input": {
+    "scheduler": {
+      "expected": "slurm",
+      "observed": "slurm",
+      "status": "compatible"
+    },
+    "required_software_status": "unknown",
+    "required_paths_status": "unknown",
+    "resource_decision": "insufficient_transferable_evidence",
+    "resource_decision_freshness": "current"
+  },
+  "expected": {
+    "classification": "insufficient_environment_knowledge",
+    "facts": {
+      "resource_decision_is_current": true,
+      "resource_gate_is_actionable": false,
+      "scheduler_is_compatible": true,
+      "target_requirements_are_known": false
+    },
+    "missing_evidence": [
+      "roihu_required_paths",
+      "roihu_required_software",
+      "transferable_resource_profile"
+    ],
+    "recommended_action": "collect_environment_and_resource_evidence",
+    "automatic_execution_allowed": false,
+    "forbidden_fact_ids": [
+      "workflow_is_ready_on_roihu"
+    ]
+  },
+  "forbidden_output_substrings": [
+    "workflow is ready",
+    "use puhti paths automatically"
+  ]
+}

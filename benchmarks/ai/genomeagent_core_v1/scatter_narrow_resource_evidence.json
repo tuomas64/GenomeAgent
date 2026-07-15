@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "case_id": "scatter_narrow_resource_evidence",
+  "category": "resource_reasoning",
+  "sensitivity": "non_sensitive_fixture",
+  "instruction": "Classify whether the empirical profile supports transfer to another environment.",
+  "input": {
+    "profile_key": "scattered_genotypegvcfs_250kb",
+    "source_environment": "puhti",
+    "target_environment": "roihu",
+    "successful_attempts": 21,
+    "timeouts": 1,
+    "unique_batches": 1,
+    "unique_chromosomes": 1,
+    "required_unique_batches": 3,
+    "required_unique_chromosomes": 3,
+    "proposal_status": "insufficient_workload_diversity"
+  },
+  "expected": {
+    "classification": "insufficient_transferable_evidence",
+    "facts": {
+      "allocation_proposal_available": false,
+      "successful_attempts": 21,
+      "unique_batches": 1,
+      "unique_chromosomes": 1
+    },
+    "missing_evidence": [
+      "additional_chromosomes",
+      "additional_scatter_batches"
+    ],
+    "recommended_action": "collect_diverse_successful_resource_evidence",
+    "automatic_execution_allowed": false,
+    "forbidden_fact_ids": [
+      "roihu_allocation_validated"
+    ]
+  },
+  "forbidden_output_substrings": [
+    "submit the job",
+    "roihu allocation is validated"
+  ]
+}
