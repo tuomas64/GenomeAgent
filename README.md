@@ -83,6 +83,13 @@ host, explicitly removes token variables, and records read-only status observati
 It cannot hash model files, publish the staged directory, submit Slurm, allocate a GPU
 or run the model.
 
+The **Staged Model Integrity Verification Core** first compares the downloaded
+path-and-size inventory with the approved provider inventory using a bounded read-only
+Roihu-CPU observation. After explicit approval it submits one serial `small` job to
+compute SHA-256 for every approved regular file and compare available provider LFS
+digests. Results and a manifest candidate are written only to a confined control
+directory. Staging mutation, publication, GPU use and inference remain forbidden.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -122,6 +129,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Acquisition Approval/Bundle | ✅ Initial reusable core   |
 | Acquisition Runtime Preflight| ✅ Initial reusable core   |
 | Controlled Staging Download | ✅ Initial reusable core   |
+| Staged Integrity Verification| ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -346,6 +354,37 @@ python3 scripts/model_acquisition_download.py status roihu_qwen3_coder \
 ```
 
 See the [controlled staging download documentation](docs/controlled_model_download.md).
+
+After the download reaches `download_completed_unverified`, collect and ingest the
+staged metadata inventory:
+
+```bash
+python3 scripts/model_integrity_verification.py collect roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --download-execution-id <download-execution-id>
+python3 scripts/model_integrity_verification.py ingest roihu_qwen3_coder \
+  --bundle-id <bundle-id>
+```
+
+Then explicitly authorize and submit the bounded CPU hash job:
+
+```bash
+python3 scripts/model_integrity_verification.py authorize roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --download-execution-id <download-execution-id> \
+  --inventory-evidence-id <fresh-inventory-evidence-id> \
+  --reviewer <researcher-id> \
+  --confirm-staging-hash-verification
+
+python3 scripts/model_integrity_verification.py launch roihu_qwen3_coder \
+  --bundle-id <bundle-id> \
+  --authorization-id <authorization-id> \
+  --confirm-submit-hash-verification
+```
+
+The terminal success state is `verified_ready_for_publication_review`; it does not
+publish the model. See the
+[integrity verification documentation](docs/model_integrity_verification.md).
 
 ---
 

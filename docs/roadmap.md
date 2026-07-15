@@ -10,4 +10,5 @@
 - v0.16 Controlled Model Acquisition Approval and Bundle Core
 - v0.17 Read-only Model Acquisition Runtime Preflight
 - v0.18 Controlled Public Model Staging Download
+- v0.19 Staged Model Integrity Verification
 - v1.0 AI-assisted genomics platform

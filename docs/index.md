@@ -19,6 +19,7 @@ performing reproducible genomics analyses on HPC systems.
 - [Controlled Model Acquisition Approval and Bundle Core](controlled_model_acquisition.md)
 - [Read-only Model Acquisition Runtime Preflight](model_acquisition_runtime_preflight.md)
 - [Controlled Public Model Staging Download](controlled_model_download.md)
+- [Staged Model Integrity Verification](model_integrity_verification.md)
 - [Data and Knowledge Management Plan](data_and_knowledge_management_plan.md)
 - [Design philosophy](philosophy.md)
 - [Roadmap](roadmap.md)

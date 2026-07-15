@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.14 (Draft)
+**Current Version:** 1.15 (Draft)
 
 **Last Updated:** July 2026
 
@@ -253,6 +253,28 @@ completion is not installation: exact path and size validation, full local SHA-2
 provider LFS digest comparison, manifest construction and atomic publication remain a
 separate compute-stage review and authorization boundary.
 
+### Staged model integrity verification
+
+Before publication, GenomeAgent records a bounded metadata-only inventory from the
+Roihu-CPU environment and compares exact relative paths, sizes, file counts and byte
+totals with the approved source inventory. Hugging Face `.cache` transfer metadata is
+classified separately, must be symlink-free and is excluded from the trusted model
+manifest. Any unexpected model file, missing file, size mismatch, symlink, special
+entry, target-path conflict or unverified scheduler context blocks hashing.
+
+Hashing requires a new content-addressed researcher authorization bound to the direct
+unexpired inventory snapshot, derived state, acquisition bundle, completed download
+evidence, policy and requested Slurm resources. The authorized job uses Roihu's serial
+`small` CPU partition with one CPU, 4 GiB memory and a two-hour limit. It reads only
+approved staged regular files, computes local SHA-256 for all of them, compares every
+available provider LFS SHA-256 and detects files that change during reading.
+
+The job writes status, results and a manifest candidate only below its confined
+verification control directory. It cannot alter staging, remove transfer metadata,
+publish or rename the model, allocate a GPU, perform inference or activate the backend.
+Successful hashing ends at `verified_ready_for_publication_review`; publication
+requires a separate fresh observation and explicit authorization.
+
 ### Public model source metadata
 
 Public model-source metadata is recorded as immutable evidence separately from the
@@ -308,6 +330,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.15 | July 2026 | Added exact staged inventory evidence and explicitly authorized serial SHA-256 verification with provider-LFS comparison and a separate publication gate. |
 | 1.14 | July 2026 | Added expiring exact-input download authorization, confined public inbound staging transfer and read-only download status evidence. |
 | 1.13 | July 2026 | Added time-bounded, bundle-bound acquisition runtime, transfer-context, quota and remote target preflight evidence. |
 | 1.12 | July 2026 | Added exact-plan acquisition-preparation approvals, data-only execution bundles, truthful provider-versus-local digest semantics and independent runtime, target-state and fresh-execution gates. |
