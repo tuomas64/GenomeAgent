@@ -1,1 +1,3 @@
-__version__ = "0.15.1"
+"""GenomeAgent package metadata."""
+
+__version__ = "0.15.2"

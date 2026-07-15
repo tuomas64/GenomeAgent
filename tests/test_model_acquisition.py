@@ -14,6 +14,7 @@ from genomeagent.ai_evaluation import AIRegistry
 from genomeagent.model_acquisition import (
     ModelAcquisitionError,
     ModelAcquisitionPlanner,
+    validate_acquisition_specification,
 )
 
 
@@ -24,12 +25,27 @@ class ModelAcquisitionPlannerTests(unittest.TestCase):
     def copied_repository(self, root: Path) -> AIRegistry:
         shutil.copytree(REPOSITORY_ROOT / "config/ai", root / "config/ai")
         shutil.copytree(REPOSITORY_ROOT / "benchmarks/ai", root / "benchmarks/ai")
+        self.make_source_unreviewed(root)
         return AIRegistry(
             backend_root=root / "config/ai/backends",
             prompt_root=root / "config/ai/prompts",
             suite_root=root / "config/ai/suites",
             case_root=root / "benchmarks/ai",
         )
+
+    def make_source_unreviewed(self, root: Path) -> None:
+        """Create a deterministic pre-approval fixture independent of repo state."""
+        path = root / "config/ai/acquisition/roihu_qwen3_coder.json"
+        value = json.loads(path.read_text())
+        value["source"].update({
+            "resolved_revision": None,
+            "source_inventory_sha256": None,
+            "source_total_bytes": None,
+            "license_identifier": "Apache-2.0",
+            "license_review_status": "unreviewed",
+        })
+        value["source"].pop("license_approval", None)
+        path.write_text(json.dumps(value) + "\n", encoding="utf-8")
 
     def planner(self, root: Path, registry: AIRegistry) -> ModelAcquisitionPlanner:
         return ModelAcquisitionPlanner(
@@ -149,14 +165,26 @@ class ModelAcquisitionPlannerTests(unittest.TestCase):
             case_root=root / "benchmarks/ai",
         )
         _, backend, _ = registry.backend("roihu_qwen3_coder")
-        spec = json.loads(
-            (root / "config/ai/acquisition/roihu_qwen3_coder.json").read_text()
+        specification_path = (
+            root / "config/ai/acquisition/roihu_qwen3_coder.json"
+        )
+        spec, _ = validate_acquisition_specification(
+            specification_path, backend
         )
         self.assertEqual(spec["source"]["repository"], backend["model"]["repository"])
         self.assertEqual(
             spec["target"]["installation_path"], backend["installation"]["path"]
         )
-        self.assertIsNone(spec["source"]["resolved_revision"])
+        self.assertIn(
+            spec["source"]["license_review_status"],
+            {"unreviewed", "reviewed_accepted"},
+        )
+        if spec["source"]["license_review_status"] == "unreviewed":
+            self.assertIsNone(spec["source"]["resolved_revision"])
+            self.assertNotIn("license_approval", spec["source"])
+        else:
+            self.assertRegex(spec["source"]["resolved_revision"], r"^[0-9a-f]{40}$")
+            self.assertIn("license_approval", spec["source"])
         self.assertTrue(all(value is False for value in spec["safety"].values()))
 
     def test_verified_environment_produces_identity_resolution_plan(self):
