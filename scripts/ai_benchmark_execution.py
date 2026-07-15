@@ -138,7 +138,7 @@ def main() -> int:
             print("Backend          : {}".format(args.backend))
             print("Authorization ID : {}".format(args.authorization_id))
             print("SSH host         : {}".format(runner.host))
-            print("Slurm request    : gputest, 1 GH200, 16 CPU, 120G, 00:30:00")
+            print("Slurm request    : gputest, 1 GH200, 16 CPU, 120G, 00:15:00")
             print("Provider network : disabled")
             print("Training/output execution/activation: disabled")
             print("")

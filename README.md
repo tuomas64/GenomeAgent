@@ -49,7 +49,7 @@ The **Read-only AI Backend Evidence Collector** checks a registered backend agai
 The **Controlled Bounded AI Benchmark Execution Core** binds fresh backend evidence,
 the verified installed-model manifest and the eight non-sensitive evaluation cases
 to an expiring researcher authorization. It can submit one offline vLLM job using
-one Roihu GH200 and deterministically score the returned JSONL evidence without
+one Roihu GH200 for at most 15 minutes and deterministically score the returned JSONL evidence without
 executing model output, training the model or activating the backend.
 
 The **Pinned Model Acquisition Planning Core** converts that evidence into an immutable,

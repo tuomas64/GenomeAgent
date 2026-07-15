@@ -11,7 +11,7 @@ controlled Roihu GPU inference job. It does not train or activate the model.
 2. `authorize` records a named researcher's approval for that exact plan. The
    authorization expires after 15 minutes.
 3. `launch` may submit exactly one `gputest` job using one GH200, 16 CPUs, 120 GB
-   host memory and at most 30 minutes.
+   host memory and at most 15 minutes, matching Roihu's `gputest` limit.
 4. `status` performs a bounded read-only observation and imports the small JSONL
    response evidence only after the worker reports completion.
 5. `evaluate` applies the existing deterministic schema, factual, missing-evidence,

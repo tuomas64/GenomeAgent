@@ -235,7 +235,7 @@ def _validate_policy(path: Path, backend_id: str) -> tuple[dict[str, Any], bytes
     expected_slurm = {
         "account": "project_2001113",
         "partition": "gputest",
-        "time_limit": "00:30:00",
+        "time_limit": "00:15:00",
         "nodes": 1,
         "ntasks": 1,
         "cpus_per_task": 16,
@@ -333,7 +333,7 @@ def _plan_report(plan: Mapping[str, Any]) -> str:
         "- Status: **{}**".format(plan["status"]),
         "- Cases: {}".format(plan["case_count"]),
         "- GPU limit: one GH200",
-        "- Runtime limit: 30 minutes",
+        "- Runtime limit: 15 minutes",
         "- Automatic submission: **no**",
         "",
         "## Blockers",

@@ -154,7 +154,7 @@ class AIBenchmarkExecutionTests(unittest.TestCase):
             _, policy, _ = core.policy(BACKEND)
             self.assertEqual(policy["slurm"]["gpus"], 1)
             self.assertEqual(policy["slurm"]["gpu_type"], "gh200")
-            self.assertEqual(policy["slurm"]["time_limit"], "00:30:00")
+            self.assertEqual(policy["slurm"]["time_limit"], "00:15:00")
             self.assertTrue(all(value is False for value in policy["safety"].values()))
 
     def test_prepare_binds_registered_manifest_fixtures_and_fresh_evidence(self):

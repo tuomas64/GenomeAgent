@@ -384,7 +384,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
-| 1.18 | July 2026 | Added manifest-bound, expiring authorization for one offline GH200 fixture benchmark, bounded response evidence and deterministic local scoring while retaining separate activation authority. |
+| 1.18 | July 2026 | Added manifest-bound, expiring authorization for one offline GH200 fixture benchmark bounded to the target partition's 15-minute limit, bounded response evidence and deterministic local scoring while retaining separate activation authority. |
 | 1.17 | July 2026 | Added fresh installed-manifest evidence, explicit verified-inventory digest semantics, provenance-bound backend registration and a separate GPU benchmark gate. |
 | 1.16 | July 2026 | Added fresh verification-bound publication preflight, separately confirmed cache removal, immediate full re-verification, installed manifests and non-overwriting atomic model publication. |
 | 1.15 | July 2026 | Added exact staged inventory evidence and explicitly authorized serial SHA-256 verification with provider-LFS comparison and a separate publication gate. |
