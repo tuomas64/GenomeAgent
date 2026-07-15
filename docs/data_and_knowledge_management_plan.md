@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.12 (Draft)
+**Current Version:** 1.13 (Draft)
 
 **Last Updated:** July 2026
 
@@ -216,6 +216,22 @@ must never be interpreted as authority to download, hash, publish, activate, inf
 train. Acquisition observations, approvals, bundles, later execution evidence and
 installed-model evidence are retained as separate provenance layers.
 
+### Acquisition runtime preflight evidence
+
+Immediately before model-acquisition authorization, GenomeAgent records a bounded
+read-only observation tied to one exact acquisition bundle. It verifies the registered
+runtime module, vLLM version, availability of the Hugging Face snapshot API, future
+GPU partition and accelerator identity, project quota, target and staging absence,
+path-component symlink safety and same-filesystem publication feasibility. Importing
+the transfer API is not a provider request and does not download data.
+
+The registered transfer context permits only a future inbound copy of the approved
+public model at its immutable revision. It does not permit project-data egress,
+credential collection or arbitrary repository access. Preflight evidence expires
+after 30 minutes and configuration or bundle changes make it stale. Even a fully
+verified preflight retains `fresh_execution_authorization_missing`; observation never
+becomes execution authority.
+
 ### Public model source metadata
 
 Public model-source metadata is recorded as immutable evidence separately from the
@@ -271,6 +287,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.13 | July 2026 | Added time-bounded, bundle-bound acquisition runtime, transfer-context, quota and remote target preflight evidence. |
 | 1.12 | July 2026 | Added exact-plan acquisition-preparation approvals, data-only execution bundles, truthful provider-versus-local digest semantics and independent runtime, target-state and fresh-execution gates. |
 | 1.11 | July 2026 | Added explicit absolute environment bindings for authoritative project-quota commands, bounded direct execution and rejection of generic filesystem availability as a quota substitute. |
 | 1.10 | July 2026 | Added exact-evidence model-source and license approval, structured reviewer provenance, narrow configuration mutation, idempotency and rejection of unproven accepted-license states. |

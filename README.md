@@ -68,6 +68,13 @@ data-only acquisition contract. It distinguishes provider LFS SHA-256 evidence f
 Git blob IDs and requires locally computed SHA-256 for every future downloaded file.
 Remote access, download, submission and publication remain separately gated.
 
+The **Read-only Model Acquisition Runtime Preflight** observes the exact prepared
+bundle against Roihu immediately before execution review. It verifies the vLLM and
+Hugging Face transfer runtime without contacting the provider, registers an inbound
+public-model transfer context, checks fresh quota and target-path safety, and confirms
+the future `gputest`/GH200 launch context. Its evidence expires after 30 minutes and
+never grants download, submission, publication or activation authority.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -105,6 +112,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Model Source Metadata       | ✅ Initial reusable core   |
 | Model Source Approval       | ✅ Initial reusable core   |
 | Acquisition Approval/Bundle | ✅ Initial reusable core   |
+| Acquisition Runtime Preflight| ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -290,6 +298,19 @@ python3 scripts/model_acquisition_control.py prepare roihu_qwen3_coder \
 
 These commands make no remote connection and grant no acquisition execution
 authority. See the [controlled acquisition documentation](docs/controlled_model_acquisition.md).
+
+Collect and replay a fresh read-only runtime preflight for the exact bundle with:
+
+```bash
+python3 scripts/model_acquisition_preflight.py collect roihu_qwen3_coder \
+  --bundle-id <reviewed-bundle-id>
+python3 scripts/model_acquisition_preflight.py ingest roihu_qwen3_coder \
+  --bundle-id <reviewed-bundle-id>
+```
+
+The collector imports but never calls `snapshot_download`, performs no provider
+request and expires its evidence after 30 minutes. See the
+[acquisition runtime preflight documentation](docs/model_acquisition_runtime_preflight.md).
 
 ---
 

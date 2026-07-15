@@ -8,4 +8,5 @@
 - v0.6 Reusable Task Scanner Core and scientific task profiles
 - v0.7 Deterministic Task State and Knowledge Bridge
 - v0.16 Controlled Model Acquisition Approval and Bundle Core
+- v0.17 Read-only Model Acquisition Runtime Preflight
 - v1.0 AI-assisted genomics platform

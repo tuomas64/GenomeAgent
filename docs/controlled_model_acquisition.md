@@ -84,8 +84,8 @@ The prepared bundle reports four blockers:
 - `fresh_execution_authorization_missing`.
 
 The next component is a read-only acquisition-runtime evidence collector. It must
-verify the exact download library/runtime, an appropriate non-login execution context,
-fresh project quota, target and staging absence, and destination-filesystem identity.
+verify the exact download library/runtime, an explicitly registered data-transfer
+context, fresh project quota, target and staging absence, and destination-filesystem identity.
 Only after that evidence is reviewed may a separate execution authorization create or
 submit a bounded acquisition worker.
 

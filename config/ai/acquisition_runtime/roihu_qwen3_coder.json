@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "policy_version": "1.0",
+  "backend_id": "roihu_qwen3_coder",
+  "remote_python": "python3",
+  "module_initialization_candidates": [
+    "/usr/share/lmod/lmod/init/bash"
+  ],
+  "module_use_paths": [
+    "/appl/modulefiles/manual/aida/aarch64"
+  ],
+  "workspace_quota_command_candidates": [
+    "/appl/soft/manual/general/aarch64/csc-tools/bin/csc-workspaces"
+  ],
+  "transfer_context": {
+    "method": "huggingface_hub.snapshot_download",
+    "provider": "huggingface_hub",
+    "host_role": "login_node_data_transfer",
+    "network_direction": "inbound_public_model_only",
+    "credentials_mode": "public_repository_no_token",
+    "project_data_egress_allowed": false
+  },
+  "checks": {
+    "remote_identity": true,
+    "acquisition_runtime": true,
+    "transfer_library": true,
+    "scheduler_context": true,
+    "project_quota": true,
+    "target_and_staging_state": true,
+    "same_filesystem_publication": true
+  },
+  "limits": {
+    "timeout_seconds": 90,
+    "maximum_command_output_characters": 12000,
+    "maximum_path_components": 64,
+    "freshness_seconds": 1800
+  },
+  "safety": {
+    "remote_writes_allowed": false,
+    "provider_requests_allowed": false,
+    "model_download_allowed": false,
+    "job_submission_allowed": false,
+    "gpu_allocation_allowed": false,
+    "recursive_model_scan_allowed": false,
+    "model_file_reading_allowed": false,
+    "large_file_hashing_allowed": false,
+    "publication_allowed": false,
+    "registry_update_allowed": false,
+    "backend_activation_allowed": false
+  }
+}
