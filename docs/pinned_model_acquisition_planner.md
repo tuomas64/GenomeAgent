@@ -81,8 +81,9 @@ repeat the quota check immediately before acquisition.
 
 The generated integrity plan requires:
 
-- the downloaded file set to equal the approved source inventory;
-- SHA-256 verification for every regular file, including large weights;
+- downloaded paths and sizes to equal the approved source inventory;
+- every available provider Git LFS SHA-256 to match downloaded content;
+- a locally computed SHA-256 for every regular file, including large weights;
 - recorded paths, sizes, digests, source revision, runtime and environment identity;
 - no symlink resolving outside approved model storage;
 - staging on the destination filesystem;
@@ -91,6 +92,8 @@ The generated integrity plan requires:
 - a separate reviewed registry update and bounded GPU benchmark.
 
 Large-file hashing is required before activation but is not performed by this planner.
+Git blob IDs are retained as provenance but are not misrepresented as raw-file
+SHA-256 values. Plan policy v1.1 makes this provider-digest boundary explicit.
 
 ## Build a plan
 

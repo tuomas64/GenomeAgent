@@ -16,6 +16,7 @@ from genomeagent.ai_evaluation import AIRegistry
 
 
 MODEL_ACQUISITION_POLICY_VERSION = "1.0"
+MODEL_ACQUISITION_PLAN_POLICY_VERSION = "1.1"
 SOURCE_PROVIDERS = {"huggingface_hub"}
 LICENSE_REVIEW_STATUSES = {"unreviewed", "reviewed_accepted", "reviewed_rejected"}
 REQUIRED_FALSE_SAFETY_FIELDS = (
@@ -497,7 +498,7 @@ def _metadata_request(
     source = spec["source"]
     return {
         "schema_version": "1.0",
-        "policy_version": MODEL_ACQUISITION_POLICY_VERSION,
+        "policy_version": MODEL_ACQUISITION_PLAN_POLICY_VERSION,
         "backend_id": backend["backend_id"],
         "plan_id": plan_id,
         "provider": source["provider"],
@@ -533,7 +534,7 @@ def _integrity_plan(
 ) -> dict[str, Any]:
     return {
         "schema_version": "1.0",
-        "policy_version": MODEL_ACQUISITION_POLICY_VERSION,
+        "policy_version": MODEL_ACQUISITION_PLAN_POLICY_VERSION,
         "backend_id": backend["backend_id"],
         "plan_id": plan_id,
         "installation_path": spec["target"]["installation_path"],
@@ -541,12 +542,20 @@ def _integrity_plan(
         "publication_strategy": spec["target"]["publication_strategy"],
         "pre_publication_requirements": [
             "resolved_revision_matches_approved_source_revision",
-            "downloaded_file_set_matches_approved_source_inventory",
-            "every_regular_file_sha256_matches_approved_inventory",
+            "downloaded_file_paths_and_sizes_match_approved_source_inventory",
+            "available_provider_sha256_digests_match_downloaded_files",
+            "every_regular_file_has_locally_computed_sha256",
             "no_symlink_resolves_outside_approved_model_storage",
             "manifest_records_file_paths_sizes_and_sha256_digests",
             "manifest_records_runtime_model_and_environment_identity",
         ],
+        "provider_digest_boundary": {
+            "git_lfs_sha256": "verify_when_present_in_approved_source_inventory",
+            "git_blob_id": "provenance_only_not_raw_file_sha256",
+            "missing_provider_sha256": (
+                "compute_and_record_local_sha256_without_claiming_provider_match"
+            ),
+        },
         "post_publication_requirements": [
             "read_only_backend_evidence_observes_published_model",
             "backend_registry_updated_only_after_researcher_review",
@@ -644,7 +653,7 @@ class ModelAcquisitionPlanner:
         ]
         sources.sort(key=lambda item: (item["artifact_type"], item["path"]))
         identity = {
-            "policy_version": MODEL_ACQUISITION_POLICY_VERSION,
+            "policy_version": MODEL_ACQUISITION_PLAN_POLICY_VERSION,
             "backend_id": normalized_id,
             "sources": sources,
         }
@@ -698,7 +707,7 @@ class ModelAcquisitionPlanner:
 
         plan = {
             "schema_version": "1.0",
-            "policy_version": MODEL_ACQUISITION_POLICY_VERSION,
+            "policy_version": MODEL_ACQUISITION_PLAN_POLICY_VERSION,
             "source_mode": "deterministic_local_planning",
             "backend_id": normalized_id,
             "plan_id": plan_id,
@@ -753,7 +762,7 @@ class ModelAcquisitionPlanner:
         integrity = _integrity_plan(backend, spec, plan_id)
         readiness = {
             "schema_version": "1.0",
-            "policy_version": MODEL_ACQUISITION_POLICY_VERSION,
+            "policy_version": MODEL_ACQUISITION_PLAN_POLICY_VERSION,
             "backend_id": normalized_id,
             "plan_id": plan_id,
             "status": status,
@@ -780,7 +789,7 @@ class ModelAcquisitionPlanner:
         }
         provenance = {
             "schema_version": "1.0",
-            "policy_version": MODEL_ACQUISITION_POLICY_VERSION,
+            "policy_version": MODEL_ACQUISITION_PLAN_POLICY_VERSION,
             "backend_id": normalized_id,
             "plan_id": plan_id,
             "inputs": sources,

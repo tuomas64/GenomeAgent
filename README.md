@@ -62,6 +62,12 @@ review into an immutable, evidence-bound approval record. It applies only the ve
 source identity and structured licence provenance to the acquisition specification;
 all remote, download, scheduler, GPU, registry and activation authority remains off.
 
+The **Controlled Model Acquisition Approval and Bundle Core** binds explicit
+researcher approval to one exact current plan and prepares a content-addressed,
+data-only acquisition contract. It distinguishes provider LFS SHA-256 evidence from
+Git blob IDs and requires locally computed SHA-256 for every future downloaded file.
+Remote access, download, submission and publication remain separately gated.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -98,6 +104,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Model Acquisition Planning  | ✅ Initial reusable core   |
 | Model Source Metadata       | ✅ Initial reusable core   |
 | Model Source Approval       | ✅ Initial reusable core   |
+| Acquisition Approval/Bundle | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -266,6 +273,23 @@ immutable local approval record and updates the versioned acquisition specificat
 with the exact revision, inventory, size and licence provenance. It remains unable to
 download a model or contact Roihu. See the
 [model source approval documentation](docs/model_source_approval.md).
+
+After producing and reviewing a current plan, record approval for bundle preparation
+and create the still non-executable acquisition contract with:
+
+```bash
+python3 scripts/model_acquisition_control.py approve roihu_qwen3_coder \
+  --plan-id <reviewed-plan-id> \
+  --reviewer <researcher-id> \
+  --confirm-execution-preparation
+
+python3 scripts/model_acquisition_control.py prepare roihu_qwen3_coder \
+  --plan-id <reviewed-plan-id> \
+  --approval-id <approval-id>
+```
+
+These commands make no remote connection and grant no acquisition execution
+authority. See the [controlled acquisition documentation](docs/controlled_model_acquisition.md).
 
 ---
 

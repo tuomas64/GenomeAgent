@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.11 (Draft)
+**Current Version:** 1.12 (Draft)
 
 **Last Updated:** July 2026
 
@@ -192,7 +192,29 @@ Model acquisition is planned separately from model download, installation, regis
 
 Acquisition plans are content-addressed immutable artifacts derived from the backend registry, acquisition specification and current read-only environment evidence. A provisional parameter-byte estimate is labelled as a theoretical lower bound and cannot replace a complete provider file inventory. Working-space requirements are calculated only after source inventory size is known, using the recorded number of complete acquisition copies and headroom policy.
 
-The integrity contract requires an immutable source revision, complete recursive file inventory, SHA-256 evidence for every regular file, rejection of external symlink targets, same-filesystem staging and atomic final-directory publication. Large-file hashing, download and publication are future approved execution steps; the planner performs none of them. Backend registry identity, verified local model inventory and benchmark status are updated only through separate evidence and researcher-review gates.
+The integrity contract requires an immutable source revision, complete recursive file
+inventory, comparison of every available provider content SHA-256, locally computed
+SHA-256 evidence for every regular file, rejection of symlinks, same-filesystem staging
+and atomic final-directory publication. Git blob IDs are provenance identifiers and
+are not represented as raw-file SHA-256 values. Large-file hashing, download and
+publication are separately approved execution steps; the planner performs none of
+them. Backend registry identity, verified local model inventory and benchmark status
+are updated only through separate evidence and researcher-review gates.
+
+### Controlled model acquisition preparation
+
+Acquisition-preparation approval is bound to one exact current plan, all plan-artifact
+digests, the approved source-evidence digest and the researcher identifier. Its scope
+is limited to creating a deterministic data contract. The resulting bundle records
+the approved inventory, integrity requirements, same-filesystem staging layout and
+remaining execution blockers, but contains no worker program, credentials, provider
+token, remote command or scheduler submission.
+
+Remote runtime compatibility, transfer execution context, current target state and a
+fresh execution authorization remain independent gates. Approval to prepare a bundle
+must never be interpreted as authority to download, hash, publish, activate, infer or
+train. Acquisition observations, approvals, bundles, later execution evidence and
+installed-model evidence are retained as separate provenance layers.
 
 ### Public model source metadata
 
@@ -249,6 +271,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.12 | July 2026 | Added exact-plan acquisition-preparation approvals, data-only execution bundles, truthful provider-versus-local digest semantics and independent runtime, target-state and fresh-execution gates. |
 | 1.11 | July 2026 | Added explicit absolute environment bindings for authoritative project-quota commands, bounded direct execution and rejection of generic filesystem availability as a quota substitute. |
 | 1.10 | July 2026 | Added exact-evidence model-source and license approval, structured reviewer provenance, narrow configuration mutation, idempotency and rejection of unproven accepted-license states. |
 | 1.9 | July 2026 | Added bounded public model-source metadata observations, immutable revision confirmation, canonical inventory evidence, provider-checksum limitations and review-only acquisition-specification proposals. |
