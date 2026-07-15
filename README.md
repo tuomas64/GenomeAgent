@@ -46,6 +46,11 @@ The **AI Backend Registry and Evaluation Core** versions candidate inference bac
 
 The **Read-only AI Backend Evidence Collector** checks a registered backend against its actual HPC environment using one bounded SSH observation. It verifies architecture, module metadata, scheduler partition metadata, storage and a shallow model-path inventory, then rebuilds current readiness locally without downloading models, allocating a GPU or editing the registry.
 
+The **Pinned Model Acquisition Planning Core** converts that evidence into an immutable,
+review-only source identity, storage and integrity plan. Unknown model revisions,
+inventories, sizes and licenses remain blocking unknowns; the planner does not contact a
+provider, download weights or grant execution authority.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. Brain v2 promotes provenance-backed operational facts into immutable, versioned knowledge and keeps AI-derived interpretations in a separate researcher-review queue. Versioned workflow templates preserve portable workflow contracts, while the Workflow Transfer Core checks target software, environment bindings and resource gates without executing anything.
@@ -79,6 +84,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Workflow Transfer Planning  | ✅ Initial reusable core   |
 | AI Backend Evaluation       | ✅ Initial reusable core   |
 | AI Backend Evidence         | ✅ Initial reusable core   |
+| Model Acquisition Planning  | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -198,6 +204,21 @@ downloads, GPU allocations, Slurm submissions, recursive model scans or large-fi
 hashing. Evidence and current state are stored separately under
 `workspace/ai_backend_evidence/` and `workspace/ai_backend_state/`. See the
 [AI Backend Evidence Collector documentation](docs/ai_backend_evidence_collector.md).
+
+Build a deterministic, non-executable model acquisition plan from the registry and
+saved backend evidence with:
+
+```bash
+python3 scripts/model_acquisition.py plan roihu_qwen3_coder
+```
+
+The **Pinned Model Acquisition Planning Core** separates source identity, storage,
+integrity, approval and post-acquisition benchmark gates. It derives only a clearly
+labelled parameter-byte lower bound until an immutable source revision and complete
+provider inventory have been reviewed. It does not contact the model provider or
+Roihu, download weights, hash large files, submit jobs, update the backend registry or
+activate a model. See the
+[model acquisition planning documentation](docs/pinned_model_acquisition_planner.md).
 
 ---
 

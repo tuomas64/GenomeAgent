@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.7 (Draft)
+**Current Version:** 1.8 (Draft)
 
 **Last Updated:** July 2026
 
@@ -179,6 +179,14 @@ Each immutable observation retains the backend and collection-policy digests use
 
 Backend evidence may contain cluster hostnames, project paths, module names, quota summaries and model filenames. It is retained locally under the ignored `workspace/` tree and must be reviewed before public release. Credentials, private keys, SSH certificates and access tokens are never collection targets and must not be stored in backend configuration or evidence.
 
+### Pinned model acquisition planning
+
+Model acquisition is planned separately from model download, installation, registry update and activation. A versioned acquisition specification identifies the intended provider repository, target environment and installation path, representation, storage policy, integrity contract and approval boundary. Unresolved source revision, provider inventory, inventory size or license review remains explicit and blocks acquisition readiness.
+
+Acquisition plans are content-addressed immutable artifacts derived from the backend registry, acquisition specification and current read-only environment evidence. A provisional parameter-byte estimate is labelled as a theoretical lower bound and cannot replace a complete provider file inventory. Working-space requirements are calculated only after source inventory size is known, using the recorded number of complete acquisition copies and headroom policy.
+
+The integrity contract requires an immutable source revision, complete recursive file inventory, SHA-256 evidence for every regular file, rejection of external symlink targets, same-filesystem staging and atomic final-directory publication. Large-file hashing, download and publication are future approved execution steps; the planner performs none of them. Backend registry identity, verified local model inventory and benchmark status are updated only through separate evidence and researcher-review gates.
+
 ## Responsible HPC Usage
 
 GenomeAgent benchmarks new workflows before scaling, monitors representative and exceptional analyses, compares requested resources with measured use, estimates future requirements from comparable jobs, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage and scheduler load.
@@ -203,6 +211,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.8 | July 2026 | Added content-addressed pinned-model acquisition planning, source identity and license gates, transparent storage lower bounds, full-file integrity contracts and atomic publication requirements. |
 | 1.7 | July 2026 | Added bounded read-only AI backend environment observations, shallow model inventory policy, stale-evidence handling, local retention controls and independent environment/model/benchmark gates. |
 | 1.6 | July 2026 | Added versioned AI backend, prompt and benchmark records; immutable evaluation evidence; model identity requirements; data-classification controls; and explicit local-versus-external fallback governance. |
 | 1.5 | July 2026 | Added deterministic Brain v2 knowledge promotion, immutable claim snapshots, AI-candidate isolation and environment-aware workflow transfer gates. |
