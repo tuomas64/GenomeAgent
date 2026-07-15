@@ -1,50 +1,61 @@
 {
-  "schema_version": "1.0",
-  "policy_version": "1.0",
+  "approval_policy": {
+    "fresh_environment_evidence_required": true,
+    "researcher_approval_required": true
+  },
   "backend_id": "roihu_qwen3_coder",
+  "integrity_policy": {
+    "reject_external_symlinks": true,
+    "require_recursive_file_inventory": true,
+    "require_revision_in_manifest": true,
+    "require_sha256_for_all_regular_files": true
+  },
+  "policy_version": "1.0",
+  "representation": {
+    "bytes_per_parameter": 2,
+    "precision": "bfloat16"
+  },
+  "safety": {
+    "automatic_backend_activation_allowed": false,
+    "automatic_registry_update_allowed": false,
+    "gpu_allocation_allowed": false,
+    "job_submission_allowed": false,
+    "large_file_hashing_allowed": false,
+    "model_download_allowed": false,
+    "model_import_allowed": false,
+    "remote_access_allowed": false,
+    "remote_writes_allowed": false
+  },
+  "schema_version": "1.0",
   "source": {
+    "license_approval": {
+      "accepted_at_utc": "2026-07-15T10:04:45Z",
+      "approval_id": "54a68007abf6bf1f6938dacd70c88bd05899efe5b73c18ee6da86a931beba85f",
+      "license_identifier": "Apache-2.0",
+      "resolved_revision": "b2cff646eb4bb1d68355c01b18ae02e7cf42d120",
+      "review_url": "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct/blob/b2cff646eb4bb1d68355c01b18ae02e7cf42d120/LICENSE",
+      "reviewer": "tuomas64",
+      "schema_version": "1.0",
+      "source_evidence_id": "20260715T094807016620Z",
+      "source_evidence_sha256": "3aa159757280bccdedc67f441f1abd7516a362bb36110559935bbbf57c221964"
+    },
+    "license_identifier": "Apache-2.0",
+    "license_review_status": "reviewed_accepted",
     "provider": "huggingface_hub",
     "repository": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
-    "resolved_revision": null,
-    "source_inventory_sha256": null,
-    "source_total_bytes": null,
-    "license_identifier": "Apache-2.0",
-    "license_review_status": "unreviewed"
-  },
-  "target": {
-    "environment_id": "roihu",
-    "project_storage_root": "/scratch/project_2001113",
-    "installation_path": "/scratch/project_2001113/models/Qwen3-Coder-30B-A3B-Instruct",
-    "manifest_filename": ".genomeagent-model-manifest.json",
-    "publication_strategy": "atomic_directory_rename_same_filesystem"
-  },
-  "representation": {
-    "precision": "bfloat16",
-    "bytes_per_parameter": 2
+    "resolved_revision": "b2cff646eb4bb1d68355c01b18ae02e7cf42d120",
+    "source_inventory_sha256": "91f6a7580c6232ef2bc2ceb77a5d7fde60c9024b00dc0c7fc4158f2053ccd36e",
+    "source_total_bytes": 61079826794
   },
   "storage_policy": {
     "complete_copies_during_acquisition": 2,
     "headroom_basis_points": 1000
   },
-  "integrity_policy": {
-    "require_recursive_file_inventory": true,
-    "require_sha256_for_all_regular_files": true,
-    "require_revision_in_manifest": true,
-    "reject_external_symlinks": true
-  },
-  "approval_policy": {
-    "researcher_approval_required": true,
-    "fresh_environment_evidence_required": true
-  },
-  "safety": {
-    "remote_access_allowed": false,
-    "remote_writes_allowed": false,
-    "model_download_allowed": false,
-    "model_import_allowed": false,
-    "job_submission_allowed": false,
-    "gpu_allocation_allowed": false,
-    "large_file_hashing_allowed": false,
-    "automatic_registry_update_allowed": false,
-    "automatic_backend_activation_allowed": false
+  "target": {
+    "environment_id": "roihu",
+    "installation_path": "/scratch/project_2001113/models/Qwen3-Coder-30B-A3B-Instruct",
+    "manifest_filename": ".genomeagent-model-manifest.json",
+    "project_storage_root": "/scratch/project_2001113",
+    "publication_strategy": "atomic_directory_rename_same_filesystem"
   }
 }
