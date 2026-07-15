@@ -217,6 +217,9 @@ downloads, GPU allocations, Slurm submissions, recursive model scans or large-fi
 hashing. Evidence and current state are stored separately under
 `workspace/ai_backend_evidence/` and `workspace/ai_backend_state/`. See the
 [AI Backend Evidence Collector documentation](docs/ai_backend_evidence_collector.md).
+On Roihu, project-quota evidence uses the versioned absolute
+`csc-workspaces` path because that command is not exposed to the non-login Python
+`PATH`; arbitrary path or login-shell discovery is not used during collection.
 
 Build a deterministic, non-executable model acquisition plan from the registry and
 saved backend evidence with:

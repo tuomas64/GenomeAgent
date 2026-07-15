@@ -15,7 +15,8 @@ from typing import Any, Mapping, Optional, Protocol
 from genomeagent.ai_evaluation import AIRegistry
 
 
-AI_BACKEND_EVIDENCE_POLICY_VERSION = "1.0"
+AI_BACKEND_EVIDENCE_POLICY_VERSION = "1.1"
+SUPPORTED_AI_BACKEND_EVIDENCE_SNAPSHOT_POLICY_VERSIONS = frozenset({"1.0", "1.1"})
 REQUIRED_FALSE_SAFETY_FIELDS = (
     "remote_writes_allowed",
     "job_submission_allowed",
@@ -158,6 +159,36 @@ def _validate_policy(
     if not re.fullmatch(r"[A-Za-z0-9_./+-]+", remote_python):
         raise AIBackendEvidenceError("Unsafe remote Python executable.")
     _validate_absolute_path(policy.get("project_storage_root"), "project_storage_root")
+    workspace_candidates = policy.get("workspace_quota_command_candidates")
+    if (
+        not isinstance(workspace_candidates, list)
+        or not workspace_candidates
+        or len(workspace_candidates) > 5
+    ):
+        raise AIBackendEvidenceError(
+            "workspace_quota_command_candidates must contain between 1 and 5 paths."
+        )
+    if not all(isinstance(candidate, str) for candidate in workspace_candidates):
+        raise AIBackendEvidenceError(
+            "workspace_quota_command_candidates must contain only path strings."
+        )
+    if len(set(workspace_candidates)) != len(workspace_candidates):
+        raise AIBackendEvidenceError(
+            "workspace_quota_command_candidates must not contain duplicates."
+        )
+    for candidate in workspace_candidates:
+        validated = _validate_absolute_path(
+            candidate, "workspace quota command candidate"
+        )
+        if (
+            not validated.startswith("/appl/soft/")
+            or Path(validated).name != "csc-workspaces"
+            or not re.fullmatch(r"/[A-Za-z0-9_./+-]+", validated)
+        ):
+            raise AIBackendEvidenceError(
+                "Workspace quota commands must be explicit CSC software paths "
+                "ending in csc-workspaces."
+            )
     candidates = policy.get("module_initialization_candidates")
     if not isinstance(candidates, list) or not candidates or len(candidates) > 5:
         raise AIBackendEvidenceError(
@@ -246,6 +277,9 @@ def _probe_program(backend: Mapping[str, Any], policy: Mapping[str, Any]) -> str
         "expected_partition": resources["partition"],
         "expected_gpu_type": resources["gpu_type"],
         "project_storage_root": policy["project_storage_root"],
+        "workspace_quota_command_candidates": policy[
+            "workspace_quota_command_candidates"
+        ],
         "model_path": installation["path"],
         "model_inventory_manifest": policy["model_inventory_manifest"],
         "module_initialization_candidates": policy["module_initialization_candidates"],
@@ -547,8 +581,25 @@ if checks.get("scheduler_partition"):
 if checks.get("project_storage"):
     observation["storage"] = storage(CONFIG["project_storage_root"])
 if checks.get("workspace_quota_command"):
-    command_path = shutil.which("csc-workspaces")
+    path_search_result = shutil.which("csc-workspaces")
+    approved_candidates = list(CONFIG["workspace_quota_command_candidates"])
+    observation["storage"]["workspace_command_path_search_result"] = path_search_result
+    command_path = None
+    command_source = None
+    if path_search_result in approved_candidates:
+        candidate = Path(path_search_result)
+        if candidate.is_file() and os.access(path_search_result, os.X_OK):
+            command_path = path_search_result
+            command_source = "approved_remote_python_path"
+    if command_path is None:
+        for candidate_text in approved_candidates:
+            candidate = Path(candidate_text)
+            if candidate.is_file() and os.access(candidate_text, os.X_OK):
+                command_path = candidate_text
+                command_source = "approved_explicit_candidate"
+                break
     observation["storage"]["workspace_command_path"] = command_path
+    observation["storage"]["workspace_command_path_source"] = command_source
     if command_path:
         observation["storage"]["workspace_command"] = run([command_path])
 if checks.get("model_top_level_inventory"):
@@ -665,6 +716,28 @@ def _interpret(
         storage.get("path"),
         policy.get("project_storage_root"),
     )
+    workspace_result = storage.get("workspace_command", {})
+    workspace_path = storage.get("workspace_command_path")
+    workspace_verified = (
+        workspace_path in policy.get("workspace_quota_command_candidates", [])
+        and isinstance(workspace_result, Mapping)
+        and workspace_result.get("returncode") == 0
+        and workspace_result.get("timed_out") is False
+    )
+    add(
+        "workspace_quota_command",
+        workspace_verified,
+        {
+            "path": workspace_path,
+            "source": storage.get("workspace_command_path_source"),
+            "returncode": (
+                workspace_result.get("returncode")
+                if isinstance(workspace_result, Mapping)
+                else None
+            ),
+        },
+        policy.get("workspace_quota_command_candidates", []),
+    )
     add(
         "model_path",
         model_observation.get("exists") is True and model_observation.get("is_directory") is True,
@@ -675,6 +748,7 @@ def _interpret(
     environment_names = {
         "remote_identity", "architecture", "runtime_module", "runtime_version",
         "slurm_commands", "scheduler_partition", "gpu_type", "project_storage",
+        "workspace_quota_command",
     }
     environment_blockers = [
         item["check"] + "_unverified"
@@ -765,7 +839,10 @@ def _validate_remote_observation(
 def _validate_snapshot(payload: Mapping[str, Any], path: Path, backend_id: str) -> None:
     if payload.get("schema_version") != "1.0":
         raise AIBackendEvidenceError("Backend evidence snapshot schema is unsupported.")
-    if payload.get("policy_version") != AI_BACKEND_EVIDENCE_POLICY_VERSION:
+    if (
+        payload.get("policy_version")
+        not in SUPPORTED_AI_BACKEND_EVIDENCE_SNAPSHOT_POLICY_VERSIONS
+    ):
         raise AIBackendEvidenceError("Backend evidence snapshot policy is unsupported.")
     if payload.get("source_mode") != "bounded_read_only_backend_observation":
         raise AIBackendEvidenceError(

@@ -15,7 +15,7 @@ The initial Roihu-GPU policy permits these checks:
 - presence of the Slurm client and metadata for the configured `gputest` partition;
 - GPU type advertised by Slurm partition metadata;
 - existence and filesystem metadata of the configured project storage root;
-- bounded `csc-workspaces` output when that command is available;
+- bounded `csc-workspaces` output from an explicit approved executable path;
 - existence and at most 200 top-level entries of the configured model directory;
 - small `config.json`, Git revision and GenomeAgent model-manifest metadata when
   present.
@@ -43,6 +43,15 @@ allow-listed module tree `/appl/modulefiles/manual/aida/aarch64`. It uses an ord
 non-interactive shell and does not source the user's login or interactive shell startup
 files. The collector loads the exact module only into a temporary subprocess
 environment and reads package metadata without importing vLLM.
+
+Roihu's non-login Python environment does not expose `csc-workspaces` through `PATH`.
+Evidence policy v1.1 therefore records the observed absolute CSC software path
+`/appl/soft/manual/general/aarch64/csc-tools/bin/csc-workspaces`. The probe checks
+ordinary `PATH` only for an exact match to an approved candidate, otherwise validates
+and executes that configured path directly. It performs no recursive command search
+and does not start a login or interactive shell. A missing, non-executable, timed-out
+or non-approved quota command is an environment blocker rather than permission to use
+generic filesystem free space as project quota.
 
 ## SSH prerequisite
 

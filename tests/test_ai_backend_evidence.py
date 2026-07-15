@@ -102,6 +102,20 @@ class AIBackendEvidenceTests(unittest.TestCase):
                 "is_symlink": False,
                 "filesystem_capacity_bytes": 250 * 1024 ** 3,
                 "filesystem_available_bytes": 240 * 1024 ** 3,
+                "workspace_command_path_search_result": None,
+                "workspace_command_path": (
+                    "/appl/soft/manual/general/aarch64/"
+                    "csc-tools/bin/csc-workspaces"
+                ),
+                "workspace_command_path_source": "approved_explicit_candidate",
+                "workspace_command": {
+                    "returncode": 0,
+                    "stdout": (
+                        "/scratch/project_2001113 4.0K/250G 1/500K 180d\n"
+                    ),
+                    "stderr": "",
+                    "timed_out": False,
+                },
             },
             "model": {
                 "path": (
@@ -171,6 +185,13 @@ class AIBackendEvidenceTests(unittest.TestCase):
             policy["module_use_paths"],
             ["/appl/modulefiles/manual/aida/aarch64"],
         )
+        self.assertEqual(
+            policy["workspace_quota_command_candidates"],
+            [
+                "/appl/soft/manual/general/aarch64/"
+                "csc-tools/bin/csc-workspaces"
+            ],
+        )
         self.assertTrue(all(value is False for value in policy["safety"].values()))
 
     def test_collection_writes_immutable_snapshot_without_execution_authority(self):
@@ -194,6 +215,15 @@ class AIBackendEvidenceTests(unittest.TestCase):
             self.assertEqual(payload["query"]["model_inventory_depth"], 1)
             self.assertTrue(all(value is False for value in payload["safety"].values()))
             self.assertEqual(payload["readiness"]["environment_blockers"], [])
+            self.assertEqual(
+                payload["observation"]["storage"]["workspace_command_path_source"],
+                "approved_explicit_candidate",
+            )
+            quota_check = next(
+                item for item in payload["readiness"]["environment_checks"]
+                if item["check"] == "workspace_quota_command"
+            )
+            self.assertEqual(quota_check["status"], "verified")
             self.assertIn("model_path_absent", payload["readiness"]["model_blockers"])
             report = result.evidence_path.with_suffix(".md").read_text()
             self.assertIn("Large model files hashed: **no**", report)
@@ -203,6 +233,28 @@ class AIBackendEvidenceTests(unittest.TestCase):
                 collector.collect(
                     "roihu_qwen3_coder", runner, stamp="20260715T120000Z"
                 )
+
+    def test_missing_workspace_quota_command_is_an_environment_blocker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            observation = self.observation()
+            observation["storage"].update({
+                "workspace_command_path": None,
+                "workspace_command_path_source": None,
+                "workspace_command": None,
+            })
+            result = self.collector(root, registry).collect(
+                "roihu_qwen3_coder",
+                FakeRunner(observation),
+                stamp="20260715T120000Z",
+            )
+            self.assertEqual(result.environment_status, "environment_evidence_incomplete")
+            payload = json.loads(result.evidence_path.read_text())
+            self.assertIn(
+                "workspace_quota_command_unverified",
+                payload["readiness"]["environment_blockers"],
+            )
 
     def test_ingest_rebuilds_current_state_without_editing_registry(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -246,6 +298,30 @@ class AIBackendEvidenceTests(unittest.TestCase):
             result = self.core(root, registry).ingest("roihu_qwen3_coder")
             self.assertEqual(result.status, "environment_evidence_stale")
             self.assertIn("configuration_changed_since_observation", result.blockers)
+
+    def test_ingest_replays_version_1_0_snapshot_as_stale_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            result = self.collector(root, registry).collect(
+                "roihu_qwen3_coder",
+                FakeRunner(self.observation()),
+                stamp="20260715T120000Z",
+            )
+            payload = json.loads(result.evidence_path.read_text())
+            payload["policy_version"] = "1.0"
+            payload["source_artifacts"][1]["sha256"] = "0" * 64
+            result.evidence_path.write_text(
+                json.dumps(payload) + "\n", encoding="utf-8"
+            )
+
+            ingested = self.core(root, registry).ingest("roihu_qwen3_coder")
+
+            self.assertEqual(ingested.snapshots, 1)
+            self.assertEqual(ingested.status, "environment_evidence_stale")
+            self.assertIn(
+                "configuration_changed_since_observation", ingested.blockers
+            )
 
     def test_unsafe_policy_and_unsafe_remote_claim_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -305,6 +381,12 @@ class AIBackendEvidenceTests(unittest.TestCase):
             self.assertIn("os.scandir(path_text)", program)
             self.assertIn('source "$MODULE_INIT"', program)
             self.assertIn('module use "$module_path"', program)
+            self.assertIn(
+                "/appl/soft/manual/general/aarch64/"
+                "csc-tools/bin/csc-workspaces",
+                program,
+            )
+            self.assertIn('run([command_path])', program)
             self.assertIn('"bash", "-c", module_prefix', program)
             self.assertNotIn('["bash", "-lic"]', program)
             self.assertNotIn("os.walk", program)
@@ -325,6 +407,21 @@ class AIBackendEvidenceTests(unittest.TestCase):
             policy_path.write_text(json.dumps(policy) + "\n", encoding="utf-8")
             with self.assertRaisesRegex(
                 AIBackendEvidenceError, "unsupported shell characters"
+            ):
+                self.collector(root, registry).policy("roihu_qwen3_coder")
+
+    def test_workspace_quota_command_requires_an_explicit_csc_software_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            registry = self.copied_repository(root)
+            policy_path = root / "config/ai/evidence/roihu_qwen3_coder.json"
+            policy = json.loads(policy_path.read_text())
+            policy["workspace_quota_command_candidates"] = [
+                "/tmp/csc-workspaces"
+            ]
+            policy_path.write_text(json.dumps(policy) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                AIBackendEvidenceError, "explicit CSC software paths"
             ):
                 self.collector(root, registry).policy("roihu_qwen3_coder")
 

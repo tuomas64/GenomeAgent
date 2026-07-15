@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.10 (Draft)
+**Current Version:** 1.11 (Draft)
 
 **Last Updated:** July 2026
 
@@ -179,6 +179,13 @@ Each immutable observation retains the backend and collection-policy digests use
 
 Backend evidence may contain cluster hostnames, project paths, module names, quota summaries and model filenames. It is retained locally under the ignored `workspace/` tree and must be reviewed before public release. Credentials, private keys, SSH certificates and access tokens are never collection targets and must not be stored in backend configuration or evidence.
 
+Commands used as authoritative capacity evidence are versioned environment bindings.
+When a command is absent from a non-login observation `PATH`, GenomeAgent may execute
+only an explicit validated absolute path from the evidence policy. It must not perform
+an unbounded filesystem search or silently substitute generic filesystem availability
+for project quota. Missing, non-approved or unsuccessful quota commands remain
+blocking unknowns.
+
 ### Pinned model acquisition planning
 
 Model acquisition is planned separately from model download, installation, registry update and activation. A versioned acquisition specification identifies the intended provider repository, target environment and installation path, representation, storage policy, integrity contract and approval boundary. Unresolved source revision, provider inventory, inventory size or license review remains explicit and blocks acquisition readiness.
@@ -242,6 +249,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.11 | July 2026 | Added explicit absolute environment bindings for authoritative project-quota commands, bounded direct execution and rejection of generic filesystem availability as a quota substitute. |
 | 1.10 | July 2026 | Added exact-evidence model-source and license approval, structured reviewer provenance, narrow configuration mutation, idempotency and rejection of unproven accepted-license states. |
 | 1.9 | July 2026 | Added bounded public model-source metadata observations, immutable revision confirmation, canonical inventory evidence, provider-checksum limitations and review-only acquisition-specification proposals. |
 | 1.8 | July 2026 | Added content-addressed pinned-model acquisition planning, source identity and license gates, transparent storage lower bounds, full-file integrity contracts and atomic publication requirements. |
