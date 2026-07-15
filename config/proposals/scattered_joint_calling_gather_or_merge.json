@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "proposal_core_version": "0.1.1",
+  "task": "scattered_joint_calling",
+  "action": "gather_or_merge",
+  "authority": {
+    "remote_reads_allowed": false,
+    "remote_writes_allowed": false,
+    "slurm_submission_allowed": false,
+    "automatic_execution_allowed": false,
+    "deletion_allowed": false,
+    "knowledge_update_allowed": false
+  },
+  "expected_intervals": 886,
+  "expected_samples": 455,
+  "chromosome_order": [
+    "chr1",
+    "chr2",
+    "chr3",
+    "chr4",
+    "chr5",
+    "chr6",
+    "chr7"
+  ],
+  "reference_contig_map": {
+    "chr1": "H4v6#0#chr1",
+    "chr2": "H4v6#0#chr2",
+    "chr3": "H4v6#0#chr3",
+    "chr4": "H4v6#0#chr4",
+    "chr5": "H4v6#0#chr5",
+    "chr6": "H4v6#0#chr6",
+    "chr7": "H4v6#0#chr7"
+  },
+  "reference_fasta": "/scratch/project_2001113/pangenome/Fragaria_vesca_v6_genome.fasta",
+  "sample_map": "/scratch/project_2001113/GATK/jointcalling/sample_map.txt",
+  "remote_output_root": "/scratch/project_2001113/GATK/jointcalling/genotyped_scatter_250kb/gathered",
+  "output_prefix": "linear_joint_455samples",
+  "slurm_account": "project_2001113",
+  "software": {
+    "gatk_module": "gatk/4.5.0.0",
+    "bcftools_module": "biokit"
+  },
+  "provisional_resources": {
+    "gather_chromosomes": {
+      "cpus_per_task": 2,
+      "memory": "16G",
+      "time_limit": "04:00:00"
+    },
+    "gather_genome": {
+      "cpus_per_task": 2,
+      "memory": "16G",
+      "time_limit": "04:00:00"
+    },
+    "validate_final": {
+      "cpus_per_task": 4,
+      "memory": "16G",
+      "time_limit": "04:00:00"
+    }
+  },
+  "template_version": "scattered_joint_gather_v2",
+  "cluster_environment_init": "/appl/profile/zz-csc-env.sh"
+}
