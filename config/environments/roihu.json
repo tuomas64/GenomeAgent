@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "environment_id": "roihu",
+  "display_name": "CSC Roihu",
+  "scheduler": "slurm",
+  "host_aliases": [
+    "roihu"
+  ],
+  "evidence_status": "registered_without_local_resource_evidence",
+  "scheduler_defaults": {
+    "partition": null,
+    "cpus_per_task": null
+  },
+  "resource_transfer_policy": {
+    "direct_external_profile_application_allowed": false,
+    "target_pilot_required_for_external_profiles": true
+  },
+  "notes": "Hardware, partitions and scheduler defaults remain unknown until verified evidence is recorded."
+}

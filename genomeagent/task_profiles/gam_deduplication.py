@@ -476,7 +476,7 @@ def relevant_name(name, patterns):
     return any(pattern.lower() in lowered for pattern in patterns)
 
 
-def scan_jobs(user, account, patterns):
+def scan_jobs(user, account, patterns, max_recent_records, recent_job_days):
     squeue = run_command([
         "squeue", "-h", "-u", user,
         "-o", "%i|%a|%j|%T|%M|%l|%R",
@@ -501,21 +501,27 @@ def scan_jobs(user, account, patterns):
                     "reason": reason,
                 })
 
+    start_date = time.strftime(
+        "%Y-%m-%d", time.localtime(time.time() - recent_job_days * 86400)
+    )
     sacct = run_command([
-        "sacct", "-X", "-S", "today", "-n", "-P",
-        "-o", "JobIDRaw,Account,JobName,State,Elapsed,ExitCode",
+        "sacct", "--array", "-X", "-S", start_date, "-n", "-P",
+        "-o", "JobID%40,JobIDRaw,Account,JobName%60,State,Elapsed,ExitCode",
     ])
     recent = []
     if sacct["returncode"] == 0:
         for line in sacct["stdout"].splitlines():
-            fields = line.split("|", 5)
-            if len(fields) != 6:
+            fields = line.split("|")
+            if len(fields) < 7:
                 continue
-            job_id, job_account, name, state, elapsed, exit_code = fields
+            (
+                job_id, job_id_raw, job_account, name, state, elapsed, exit_code
+            ) = fields[:7]
             if relevant_name(name, patterns) and (not account or job_account == account):
                 _, parent_job_id = job_identity(job_id)
                 recent.append({
                     "job_id": job_id,
+                    "job_id_raw": job_id_raw,
                     "parent_job_id": parent_job_id,
                     "account": job_account,
                     "name": name,
@@ -526,7 +532,7 @@ def scan_jobs(user, account, patterns):
 
     return {
         "running": running,
-        "recent": recent[-200:],
+        "recent": recent[-max_recent_records:],
         "squeue_returncode": squeue["returncode"],
         "squeue_stderr": squeue["stderr"][-2000:],
         "sacct_returncode": sacct["returncode"],
@@ -747,6 +753,8 @@ def main():
         CONFIG.get("user", "tuomas64"),
         CONFIG.get("account", ""),
         CONFIG.get("job_name_patterns", ["dedup"]),
+        int(CONFIG.get("max_recent_scheduler_records", 600)),
+        int(CONFIG.get("recent_job_days", 3)),
     )
     logs = scan_logs(
         log_patterns,
@@ -787,6 +795,22 @@ def build_remote_program(config: Mapping[str, Any]) -> str:
 
 
 def validate_config(config: Mapping[str, Any]) -> None:
+    recent_job_days = config.get("recent_job_days", 3)
+    if (
+        not isinstance(recent_job_days, int)
+        or isinstance(recent_job_days, bool)
+        or not 1 <= recent_job_days <= 30
+    ):
+        raise TaskScanError("recent_job_days must be an integer between 1 and 30.")
+    recent_scheduler_limit = config.get("max_recent_scheduler_records", 600)
+    if (
+        not isinstance(recent_scheduler_limit, int)
+        or isinstance(recent_scheduler_limit, bool)
+        or not 1 <= recent_scheduler_limit <= 2000
+    ):
+        raise TaskScanError(
+            "max_recent_scheduler_records must be an integer between 1 and 2000."
+        )
     datasets = config.get("datasets")
     if not isinstance(datasets, list) or not datasets:
         raise TaskScanError("GAM deduplication configuration requires a non-empty datasets list.")
@@ -1149,7 +1173,10 @@ class GamDeduplicationProfile:
         write_tsv(
             recent_jobs_path,
             observation.get("jobs", {}).get("recent", []),
-            ["job_id", "parent_job_id", "account", "name", "state", "elapsed", "exit_code"],
+            [
+                "job_id", "job_id_raw", "parent_job_id", "account", "name",
+                "state", "elapsed", "exit_code",
+            ],
         )
 
         scanned_paths_path = scan_dir / "scanned_paths.tsv"

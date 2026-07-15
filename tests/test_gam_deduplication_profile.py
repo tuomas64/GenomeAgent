@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -16,12 +17,13 @@ from genomeagent.task_scanner import TaskScanError
 
 
 class GamDeduplicationProfileTests(unittest.TestCase):
-    def run_fixture_observer(self, config):
+    def run_fixture_observer(self, config, env=None):
         result = subprocess.run(
             [sys.executable, "-c", build_remote_program(config)],
             text=True,
             capture_output=True,
             check=False,
+            env=env,
         )
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         return json.loads(result.stdout.strip().splitlines()[-1])
@@ -169,6 +171,65 @@ class GamDeduplicationProfileTests(unittest.TestCase):
         }
         with self.assertRaises(TaskScanError):
             validate_config(invalid)
+
+        invalid_limit = {
+            "max_recent_scheduler_records": 0,
+            "datasets": [invalid["datasets"][0]],
+        }
+        with self.assertRaisesRegex(TaskScanError, "max_recent_scheduler_records"):
+            validate_config(invalid_limit)
+
+    def test_scheduler_history_expands_array_elements_for_resource_discovery(self):
+        program = build_remote_program({
+            "project_root": "/scratch/project",
+            "user": "fixture",
+            "job_name_patterns": ["dedup"],
+            "datasets": [],
+        })
+        self.assertIn('"sacct", "--array", "-X"', program)
+        self.assertIn('"JobID%40,JobIDRaw,Account,JobName%60,State,Elapsed,ExitCode"', program)
+        self.assertIn('CONFIG.get("recent_job_days", 3)', program)
+
+    def test_scheduler_history_preserves_formatted_and_raw_slurm_job_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            squeue = bin_dir / "squeue"
+            squeue.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            squeue.chmod(0o755)
+            sacct = bin_dir / "sacct"
+            sacct.write_text(
+                "#!/bin/sh\n"
+                "printf '%s\\n' "
+                "'35448818_1|35448820|project_2001113|swe_gam_dedup_fast|"
+                "CANCELLED by 34474|02:00:00|0:15'\n",
+                encoding="utf-8",
+            )
+            sacct.chmod(0o755)
+            env = dict(os.environ)
+            env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+
+            observation = self.run_fixture_observer({
+                "project_root": str(root),
+                "account": "project_2001113",
+                "user": "fixture",
+                "recent_job_days": 3,
+                "job_name_patterns": ["swe_gam_dedup_fast"],
+                "max_recent_log_files": 0,
+                "datasets": [],
+            }, env=env)
+
+            self.assertEqual(observation["jobs"]["recent"], [{
+                "job_id": "35448818_1",
+                "job_id_raw": "35448820",
+                "parent_job_id": "35448818",
+                "account": "project_2001113",
+                "name": "swe_gam_dedup_fast",
+                "state": "CANCELLED by 34474",
+                "elapsed": "02:00:00",
+                "exit_code": "0:15",
+            }])
 
     def test_residual_summary_validates_output_and_preserves_qc_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -327,7 +388,9 @@ class GamDeduplicationProfileTests(unittest.TestCase):
         self.assertEqual(counts, {"own": 233, "swedish": 225})
         self.assertEqual(sum(counts.values()), 458)
         self.assertEqual(config["remote_python"], "python3.9")
-        self.assertEqual(config["profile_version"], "1.4")
+        self.assertEqual(config["profile_version"], "1.6")
+        self.assertEqual(config["recent_job_days"], 3)
+        self.assertEqual(config["max_recent_scheduler_records"], 600)
         for dataset in config["datasets"]:
             self.assertTrue(
                 any("dedup_residual_summary" in pattern for pattern in dataset["summary_globs"])

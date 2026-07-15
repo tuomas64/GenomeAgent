@@ -1,5 +1,5 @@
 {
-  "profile_version": "1.4",
+  "profile_version": "1.6",
   "project_root": "/scratch/project_2001113",
   "account": "project_2001113",
   "user": "tuomas64",
@@ -7,6 +7,8 @@
   "remote_timeout_seconds": 240,
   "max_recent_log_files": 48,
   "max_log_tail_bytes": 65536,
+  "recent_job_days": 3,
+  "max_recent_scheduler_records": 600,
   "job_name_patterns": [
     "own_gam_dedup_fast",
     "swe_gam_dedup_fast"

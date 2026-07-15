@@ -40,6 +40,8 @@ The reusable **Task Scanner Core** extends the Explorer with focused, knowledge-
 
 The **Task State Bridge** replays those immutable observations into canonical current state, transition history, provenance and safety-gated recommendations. It keeps operational state separate from curated scientific memory and provides a trustworthy input boundary for the future Execution Engine.
 
+The **Resource Evidence and Learning Core** records bounded Slurm accounting for explicit jobs and deterministically learns empirical runtime, peak-memory and efficiency profiles. It preserves failed attempts as censored evidence, flags cross-attempt anomalies and produces proposal-only recommendations that cannot change scheduler resources or execute jobs.
+
 ### GenomeAgent Brain
 
 The **GenomeAgent Brain** is the cognitive center of the system. It continuously learns from observations and combines accumulated project knowledge with AI reasoning to develop an evolving understanding of the research project.
@@ -68,6 +70,7 @@ The future **Execution Engine** will safely perform computational analyses under
 | Workflow Understanding      | ✅                         |
 | Read-only Task Monitoring   | ✅ Initial reusable core   |
 | Operational State Bridge    | ✅ Initial reusable core   |
+| Resource Evidence Learning  | ✅ Initial reusable core   |
 | Continuous Project Learning | ✅ Initial implementation  |
 | AI-assisted Workflow Design | 🚧 Initial implementation |
 | Safe Execution Engine       | 📋 Planned                |
@@ -98,6 +101,45 @@ python3 scripts/task_state.py ingest gam_deduplication
 ```
 
 The bridge writes local state under `workspace/task_state/<profile>/` and never connects to Puhti or executes recommendations. See the [Task State Bridge documentation](docs/task_state_bridge.md).
+
+Collect bounded read-only Slurm evidence for explicit completed or failed jobs, then rebuild deterministic resource knowledge with:
+
+```bash
+python3 scripts/task_resources.py collect scattered_joint_calling \
+  --job-id 35442372_16 \
+  --job-id 35452993_16 \
+  --profile-key scattered_genotypegvcfs_250kb \
+  --unit 35442372_16=16 \
+  --unit 35452993_16=16
+
+python3 scripts/task_resources.py ingest scattered_joint_calling
+```
+
+The collector only queries `sacct`; ingestion is entirely local. Profiles and non-executable recommendations are written under `workspace/task_resources/<profile>/`. See the [Resource Evidence and Learning Core documentation](docs/resource_evidence_and_learning_core.md).
+
+After later Task Scanner runs, newly terminal array attempts can be discovered without entering job IDs manually:
+
+```bash
+python3 scripts/task_resources.py collect-new scattered_joint_calling --dry-run
+python3 scripts/task_resources.py collect-new scattered_joint_calling
+python3 scripts/task_resources.py ingest scattered_joint_calling
+```
+
+Automatic collection is capped at 20 previously unseen terminal attempts per invocation. The dry run is entirely local; collection performs only a bounded read-only `sacct` query and writes immutable local evidence.
+
+Resource policy v1.2 aggregates widespread low-CPU behavior into cohort-level evidence, withholds scattered-joint-calling proposals until successful observations cover at least three scatter batches and three chromosomes, and isolates empirical profiles by source host. The GAM scanner expands accounting array records so completed worker elements can be discovered independently of array-parent summaries.
+
+Build a deterministic target-environment resource decision without remote access or job execution:
+
+```bash
+python3 scripts/task_resources.py ingest scattered_joint_calling
+
+python3 scripts/task_plan.py resources \
+  scattered_joint_calling \
+  --target-environment roihu
+```
+
+The planner prefers target-environment evidence, reduces cross-environment proposals to low-confidence pilot-only guidance, and explicitly withholds values when evidence is missing or blocked. Evidence availability is reported separately from allocation availability, so substantial but narrow measurements remain visible even when no transferable proposal is allowed. It writes canonical plans under `workspace/task_plans/<task>/<target_environment>/<profile_key>/`. See the [Resource Decision and Transfer Core documentation](docs/resource_decision_and_transfer_core.md).
 
 ---
 

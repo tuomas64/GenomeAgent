@@ -49,7 +49,9 @@ The scan produces:
 - `sample_status.tsv`: one row per observed sample.
 - `missing_inputs.tsv`: samples without a non-empty input GAM or successful retained completion evidence.
 - `running_jobs.tsv`: relevant jobs currently reported by `squeue`.
-- `recent_jobs.tsv`: relevant jobs reported by `sacct` for the current day.
+- `recent_jobs.tsv`: relevant jobs reported by `sacct` for the current day. Array tasks are expanded into individual records so terminal attempts can feed resource-evidence discovery.
+
+The GAM profile bounds expanded scheduler history to 600 relevant records, enough for the current 458-sample cohort while avoiding an unbounded accounting payload. Resource collection remains separately capped at 20 previously unseen terminal attempts per invocation.
 - `scanned_paths.tsv`: path candidates and the paths selected by the profile.
 - `recent_errors.txt`: records that routine log reading is disabled and points to `failed_intervals.tsv`.
 

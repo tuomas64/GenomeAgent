@@ -6,7 +6,7 @@
 
 **Repository:** https://github.com/tuomas64/GenomeAgent
 
-**Current Version:** 1.3 (Draft)
+**Current Version:** 1.4 (Draft)
 
 **Last Updated:** July 2026
 
@@ -143,6 +143,14 @@ Raw scheduler output and logs can contain usernames, project accounts and storag
 
 The future Execution Engine may consume a learned resource profile when preparing an execution proposal. Learned values remain recommendations until explicitly accepted or incorporated into an authoritative task configuration. Resource learning must never silently alter a running job, resubmit a failed job or change an approved scientific workflow.
 
+### Cross-environment resource decisions
+
+Resource observations and derived profiles retain their source computing environment. Profiles with the same scientific task key are not merged across Puhti, Roihu or another environment unless an explicit future harmonisation policy has been validated. Numeric scheduler job identifiers are not assumed to be globally unique.
+
+When the target environment lacks local evidence, GenomeAgent may use a sufficiently supported external profile only as low-confidence pilot guidance. The decision must identify the source and target environments, preserve the original confidence and evidence counts, mark the allocation as not target-validated, disclose missing scheduler fields and require a bounded target-environment pilot. If no comparable profile exists, GenomeAgent records an explicit no-evidence decision and does not invent resource values.
+
+The Resource Decision and Transfer Core writes resource decisions, execution-readiness gates and provenance as separate local artifacts. It cannot submit jobs. A future Execution Engine must require a fresh task observation, explicit researcher approval, a complete target scheduler allocation and post-action verification before consuming any accepted plan.
+
 ## Responsible HPC Usage
 
 GenomeAgent benchmarks new workflows before scaling, monitors representative and exceptional analyses, compares requested resources with measured use, estimates future requirements from comparable jobs, removes validated temporary files, removes unnecessary empty directories after verification, and minimises unnecessary storage and scheduler load.
@@ -167,6 +175,7 @@ This Data, Resource and Knowledge Management Plan is a living document maintaine
 
 | Version | Date | Description |
 |----------|------|-------------|
+| 1.4 | July 2026 | Added source-environment isolation, deterministic cross-environment resource decisions, explicit no-evidence outcomes and target-pilot safety requirements. |
 | 1.3 | July 2026 | Added HPC resource observations, deterministic empirical resource profiles, retention and provenance requirements, and their controlled relationship to the future Execution Engine. |
 | 1.2 | July 2026 | Added immutable task observations, deterministic operational state, provenance, observation-health gates and the future execution boundary. |
 | 1.1 | July 2026 | Added the current *Fragaria vesca* pangenome and Illumina dataset scope, authoritative sample counts and subset relationships. |

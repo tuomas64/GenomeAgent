@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "environment_id": "puhti",
+  "display_name": "CSC Puhti",
+  "scheduler": "slurm",
+  "host_aliases": [
+    "puhti"
+  ],
+  "evidence_status": "observed_source_environment",
+  "scheduler_defaults": {
+    "partition": null,
+    "cpus_per_task": null
+  },
+  "resource_transfer_policy": {
+    "direct_external_profile_application_allowed": false,
+    "target_pilot_required_for_external_profiles": true
+  },
+  "notes": "Resource capabilities are intentionally not inferred from the environment name."
+}
