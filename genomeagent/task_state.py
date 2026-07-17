@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 
-SUPPORTED_TASKS = {"gam_deduplication", "scattered_joint_calling"}
+SUPPORTED_TASKS = {"gam_deduplication", "scattered_joint_calling", "graph_sv_genotyping"}
 
 
 class TaskStateError(RuntimeError):
@@ -265,6 +265,26 @@ def _normalize_gam_units(observation: Mapping[str, Any]) -> list[dict[str, Any]]
     return sorted(units, key=lambda item: item["unit_id"])
 
 
+def _normalize_graph_sv_units(observation, status):
+    rows = status.get('samples', []) or observation.get('samples', [])
+    units = []
+    for row in rows:
+        if not isinstance(row, Mapping) or not row.get('sample'):
+            continue
+        sample = str(row['sample'])
+        units.append({
+            'unit_id': sample, 'unit_type': 'sample',
+            'state': str(row.get('state') or 'unknown'),
+            'sample': sample,
+            'input_gam': row.get('input_gam_path', ''),
+            'dedup_gam': row.get('dedup_gam_path', ''),
+            'pack': row.get('pack_path', ''),
+            'sample_vcf': row.get('sample_vcf_path', ''),
+            'sample_vcf_index_present': bool(row.get('sample_vcf_index_present')),
+        })
+    return sorted(units, key=lambda item: item['unit_id'])
+
+
 def _normalization_health(
     task: str,
     payload: Mapping[str, Any],
@@ -351,10 +371,14 @@ def normalize_scan(bundle: ScanBundle) -> dict[str, Any]:
         units = _normalize_scattered_units(observation, status)
         groups = [dict(item) for item in status.get("batches", [])]
         group_type = "batch"
-    else:
+    elif bundle.task == "gam_deduplication":
         units = _normalize_gam_units(observation)
         groups = [dict(item) for item in status.get("datasets", [])]
         group_type = "dataset"
+    else:
+        units = _normalize_graph_sv_units(observation, status)
+        groups = []
+        group_type = "workflow"
 
     unit_state_counts: dict[str, int] = {}
     for unit in units:

@@ -15,6 +15,7 @@ if str(REPOSITORY_ROOT) not in sys.path:
 from genomeagent.task_profiles import (  # noqa: E402
     GamDeduplicationProfile,
     ScatteredJointCallingProfile,
+    GraphSvGenotypingProfile,
 )
 from genomeagent.task_scanner import (  # noqa: E402
     SSHRemotePythonRunner,
@@ -27,6 +28,7 @@ from genomeagent.task_scanner import (  # noqa: E402
 PROFILE_REGISTRY = {
     "gam_deduplication": GamDeduplicationProfile,
     "scattered_joint_calling": ScatteredJointCallingProfile,
+    "graph_sv_genotyping": GraphSvGenotypingProfile,
 }
 
 

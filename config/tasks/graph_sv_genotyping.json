@@ -1,0 +1,88 @@
+{
+  "profile_version": "1.1",
+  "remote_python": "python3",
+  "remote_timeout_seconds": 900,
+  "project_root": "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174",
+  "user": "tuomas64",
+  "account": "project_2001113",
+  "expected_samples": 457,
+  "sample_manifest_candidates": [
+    "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/analysis_457_noSLO1_sv50_pca/runs/20260716T122553Z/corrected_nonmajor/literal_exact_key_filter_scratch_v2/plink/graph_sv50_457_maf01_geno10.psam"
+  ],
+  "sample_stage_globs": {
+    "input_gam": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/gams/own/*.gam",
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/gams/swedish/*.gam"
+    ],
+    "dedup_gam": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/gams_deduplicated/own/*.gam",
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/gams_deduplicated/swedish/*.gam"
+    ],
+    "pack": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/packs/own/*.pack",
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/packs/swedish/*.pack"
+    ],
+    "sample_vcf": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/vcfs/own/*.vcf.gz",
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/vcfs/swedish/*.vcf.gz"
+    ]
+  },
+  "command_evidence_globs": [
+    "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/**/*.sh",
+    "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/**/*.slurm",
+    "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/**/*.sbatch",
+    "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/**/*.out",
+    "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/**/*.log"
+  ],
+  "product_globs": {
+    "merged_allsite_vcf": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/final/all_sites_458samples.vgcall_a.bcf"
+    ],
+    "biallelic_sv50_vcf": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/analysis_457_noSLO1_sv50_pca/runs/20260716T122553Z/corrected_nonmajor/literal_exact_key_filter_scratch_v2/sv50/graph_457.SV50.biallelic.literal_unique.simplechr.vcf.gz"
+    ],
+    "maf_geno_unpruned_vcf": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/analysis_457_noSLO1_sv50_pca/runs/20260716T122553Z/corrected_nonmajor/literal_exact_key_filter_scratch_v2/plink/graph_sv50_457_maf01_geno10.pgen"
+    ],
+    "ldpruned_pca_vcf": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/analysis_457_noSLO1_sv50_pca/runs/20260716T122553Z/corrected_nonmajor/literal_exact_key_filter_scratch_v2/plink/graph_sv50_457_maf01_geno10_ld.prune.in"
+    ],
+    "pca_eigenvec": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/analysis_457_noSLO1_sv50_pca/runs/20260716T122553Z/corrected_nonmajor/literal_exact_key_filter_scratch_v2/plink/graph_sv50_457_maf01_geno10_ldpruned_pca20.eigenvec"
+    ],
+    "pca_eigenval": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/analysis_457_noSLO1_sv50_pca/runs/20260716T122553Z/corrected_nonmajor/literal_exact_key_filter_scratch_v2/plink/graph_sv50_457_maf01_geno10_ldpruned_pca20.eigenval"
+    ],
+    "burden_long": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/analysis_457_noSLO1_sv50_pca/runs/20260716T122553Z/corrected_nonmajor/literal_exact_key_filter_scratch_v2/sv50/graph_sv50_457_maf01_geno10_unpruned.sample_sv_burden.long.tsv"
+    ],
+    "burden_wide": [
+      "/scratch/project_2001113/pangenome/minicactus_graph_genotyping_deduplicated_458_vg174/merged_all_sites_458/analysis_457_noSLO1_sv50_pca/runs/20260716T122553Z/corrected_nonmajor/literal_exact_key_filter_scratch_v2/sv50/graph_sv50_457_maf01_geno10_unpruned.sample_sv_burden.wide.tsv"
+    ]
+  },
+  "job_name_patterns": [
+    "gam",
+    "dedup",
+    "vgpack",
+    "vg_pack",
+    "vgcall",
+    "vg_call",
+    "sv50"
+  ],
+  "recent_job_days": 3,
+  "max_recent_scheduler_records": 600,
+  "expected_counts": {
+    "expected_samples": 457,
+    "merged_allsite_samples": 457,
+    "biallelic_sv50_records": 118206,
+    "maf_geno_unpruned_records": 16601,
+    "ldpruned_pca_records": 10664
+  },
+  "documented_counts_not_yet_machine_validated_by_profile_v1": {
+    "maf_geno_variants_from_pvar": 16601,
+    "ld_pruned_variants_from_prune_in": 10664,
+    "pca_samples": 457,
+    "pca_components": 20
+  },
+  "accept_vgcall_a_filename_provenance": true
+}
