@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "definition_mode": "incremental_registry",
+  "task_id": "graph_sv_genotyping",
+  "title": "Graph-based Illumina SV genotyping",
+  "description": "Incrementally reconstructed structural-variant genotyping from paired-end Illumina reads mapped to the Fragaria vesca pangenome graph. Only tasks supported by registered datasets and successful project evidence are included.",
+  "status": "active",
+  "methods_boundary": "Incremental registry of evidenced graph-based Illumina SV genotyping tasks, datasets, software, successful executions, and outputs.",
+  "tasks": [
+    {
+      "task_id": "gam_deduplication",
+      "title": "GAM duplicate removal",
+      "status": "completed",
+      "evidence": [
+        "existing GenomeAgent gam_deduplication scanner and validated deduplicated GAM outputs"
+      ]
+    },
+    {
+      "task_id": "vg_pack",
+      "title": "vg pack generation",
+      "status": "completed",
+      "evidence": [
+        "created during interactive dataset assignment"
+      ]
+    }
+  ],
+  "stages": [],
+  "runs": [],
+  "registry_policy": {
+    "add_only_evidenced_tasks": true,
+    "allow_multiple_dataset_consumers": true,
+    "do_not_invent_missing_stages": true
+  }
+}

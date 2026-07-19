@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.1",
+  "dataset_id": "example_trimmed_fastqs",
+  "title": "Example shared trimmed FASTQs",
+  "assignment_status": "assigned",
+  "lifecycle_state": "archived_verified",
+  "scientific_links": [
+    {
+      "major_task": "linear_snp_indel_discovery",
+      "relationship": "consumed_by",
+      "role": "input"
+    },
+    {
+      "major_task": "graph_snp_indel_discovery",
+      "relationship": "consumed_by",
+      "role": "input"
+    }
+  ],
+  "locations": [
+    {
+      "provider": "allas",
+      "bucket": "example-bucket",
+      "prefix": "example_trimmed_fastqs",
+      "state": "archived_verified",
+      "materialization": "complete"
+    }
+  ]
+}

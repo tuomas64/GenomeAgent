@@ -1,0 +1,71 @@
+{
+  "schema_version": "1.0",
+  "task_id": "graph_snp_indel_discovery",
+  "title": "Graph-based SNP/indel discovery",
+  "description": "Discovery of SNPs and small indels from paired-end Illumina FASTQs after vg Giraffe mapping to the Fragaria vesca pangenome graph, ending in a validated raw multisample VCF in reference coordinates.",
+  "status": "active",
+  "methods_boundary": "Raw paired-end FASTQs through graph mapping, surjected deduplicated BAMs and validated raw multisample SNP/indel VCF after GATK joint genotyping",
+  "reference_context": {
+    "graph_mapping": "vg Giraffe against the Fragaria vesca pangenome graph",
+    "gatk_reference": "/scratch/project_2001113/pangenome/reference_H4v6/Fragaria_vesca_v6_genome.fasta",
+    "joint_calling_contigs": ["H4v6#0#chr1", "H4v6#0#chr2", "H4v6#0#chr3", "H4v6#0#chr4", "H4v6#0#chr5", "H4v6#0#chr6", "H4v6#0#chr7"],
+    "gatk_work_root": "/scratch/project_2001113/GATK_graph"
+  },
+  "stages": [
+    {"order": 1, "stage_id": "raw_fastq_inputs", "title": "Raw FASTQ inputs", "methods_evidence_fields": ["sample_set", "read_layout", "read_length", "sequencing_sources", "input_locations_or_archives"]},
+    {"order": 2, "stage_id": "fastq_qc_and_trimming", "title": "FASTQ QC and trimming", "methods_evidence_fields": ["software", "software_version", "parameters", "input_manifest", "output_manifest", "validation"]},
+    {"order": 3, "stage_id": "vg_giraffe_mapping", "title": "vg Giraffe graph mapping", "methods_evidence_fields": ["software", "software_version", "graph_indexes", "parameters", "input_fastqs", "output_gams", "validation", "resource_evidence"]},
+    {"order": 4, "stage_id": "gam_validation", "title": "GAM validation", "methods_evidence_fields": ["expected_samples", "mapping_metrics", "read_pair_validation", "output_manifest", "validation_outputs"]},
+    {"order": 5, "stage_id": "surjection_to_bam", "title": "Surjection to reference-coordinate BAM", "methods_evidence_fields": ["software", "software_version", "reference_paths", "parameters", "input_gams", "output_bams", "validation"]},
+    {"order": 6, "stage_id": "read_groups", "title": "Read-group assignment", "methods_evidence_fields": ["software", "software_version", "read_group_policy", "sample_identity_validation", "outputs"]},
+    {"order": 7, "stage_id": "markduplicates", "title": "Duplicate marking", "methods_evidence_fields": ["software", "software_version", "parameters", "metrics", "outputs", "validation"]},
+    {"order": 8, "stage_id": "bam_qc", "title": "BAM quality control", "methods_evidence_fields": ["qc_metrics", "acceptance_rules", "sample_exclusions", "validation_outputs"]},
+    {"order": 9, "stage_id": "gatk_haplotypecaller", "title": "Per-sample GATK HaplotypeCaller", "methods_evidence_fields": ["software", "software_version", "reference", "parameters", "input_bams", "output_gvcfs", "validation", "resource_evidence"]},
+    {"order": 10, "stage_id": "gvcf_validation", "title": "GVCF validation", "methods_evidence_fields": ["expected_samples", "observed_samples", "index_validation", "sample_identity_validation", "validation_outputs"]},
+    {"order": 11, "stage_id": "genomicsdbimport", "title": "Chromosome-wise GenomicsDBImport", "methods_evidence_fields": ["software", "software_version", "sample_map", "contigs", "parameters", "workspaces", "validation", "resource_evidence"]},
+    {"order": 12, "stage_id": "genotypegvcfs", "title": "GenotypeGVCFs joint genotyping", "methods_evidence_fields": ["software", "software_version", "reference", "parameters", "scatter_strategy", "outputs", "validation", "resource_evidence"]},
+    {"order": 13, "stage_id": "chromosome_vcf_validation", "title": "Chromosome VCF validation", "methods_evidence_fields": ["expected_samples", "contig_validation", "index_validation", "record_statistics", "validation_outputs"]},
+    {"order": 14, "stage_id": "gather_raw_multisample_vcf", "title": "Gather raw multisample VCF", "methods_evidence_fields": ["software", "software_version", "input_order", "parameters", "output_vcf", "output_index", "checksums"]},
+    {"order": 15, "stage_id": "raw_vcf_validation", "title": "Raw multisample VCF validation", "methods_evidence_fields": ["sample_count", "sample_order", "contig_order", "variant_statistics", "readability", "checksums", "final_location_or_archive"]}
+  ],
+  "runs": [
+    {
+      "run_id": "graph_initial_458",
+      "kind": "initial",
+      "status": "active",
+      "purpose": "First uniform graph-mapped GATK SNP/indel discovery run across own and Swedish datasets.",
+      "sample_count": 458,
+      "sample_groups": {"own": 233, "swedish": 225},
+      "state_source": "Task Scanner and Task State Bridge are authoritative for current stage",
+      "external_input_locations": {
+        "own_markdup_bams": "/scratch/project_2001113/pangenome/giraffe_mapping/bam_minicactus_complete_own_data_trimmed_vg174_rg_markdup",
+        "swedish_markdup_bams": "/scratch/project_2001113/pangenome/giraffe_mapping/bam_minicactus_complete_swedish_trimmed_vg174_rg_markdup",
+        "gvcfs": "/scratch/project_2001113/GATK_graph/gvcf"
+      },
+      "stage_states": {
+        "raw_fastq_inputs": "historical_or_archived",
+        "fastq_qc_and_trimming": "completed",
+        "vg_giraffe_mapping": "completed",
+        "gam_validation": "completed",
+        "surjection_to_bam": "completed",
+        "read_groups": "completed",
+        "markduplicates": "completed",
+        "bam_qc": "completed",
+        "gatk_haplotypecaller": "completed",
+        "gvcf_validation": "validated",
+        "genomicsdbimport": "active",
+        "genotypegvcfs": "pending",
+        "chromosome_vcf_validation": "pending",
+        "gather_raw_multisample_vcf": "pending",
+        "raw_vcf_validation": "pending"
+      },
+      "methods_evidence": {}
+    }
+  ],
+  "future_calling_branches": {
+    "gatk": "active",
+    "deepvariant": "planned alternative branch from validated graph-surjected BAMs"
+  },
+  "upstream_dependency": "Pangenome construction and graph-index creation will be formalized later as a separate major task.",
+  "downstream_boundary": "Variant filtering, PCA, population structure, phasing, ROH and demographic analyses are separate downstream tasks."
+}

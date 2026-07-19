@@ -51,3 +51,6 @@ script_corpus_audit.md
 # Local secrets/config
 .env
 openai_key*
+workspace/allas_tasks/
+workspace/install_backups/
+workspace/methods/

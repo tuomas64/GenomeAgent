@@ -1,0 +1,64 @@
+{
+  "schema_version": "0.1",
+  "dataset_id": "graph_markdup_bams_458",
+  "description": "Deduplicated graph-mapped BAMs and indexes used by graph-reference GATK HaplotypeCaller",
+  "project": "project_2001113",
+  "remote": {
+    "host": "puhti",
+    "runtime_root": "/scratch/project_2001113/GenomeAgent_runtime/allas_tasks",
+    "allas_conf": "/appl/opt/csc-cli-utils/allas-cli-utils/allas_conf"
+  },
+  "local": {
+    "source_root": "/scratch/project_2001113/pangenome/giraffe_mapping",
+    "paths": [
+      "bam_minicactus_complete_own_data_trimmed_vg174_rg_markdup",
+      "bam_minicactus_complete_swedish_trimmed_vg174_rg_markdup"
+    ],
+    "status": "available_local",
+    "expected_samples": {
+      "total": 458,
+      "own": 233,
+      "swedish": 225
+    },
+    "removal_allowed": false
+  },
+  "archive": {
+    "provider": "allas",
+    "backend": "a-commands",
+    "bucket": "tuomas64-genomics",
+    "status": "not_verified",
+    "visibility": "private"
+  },
+  "transfer": {
+    "layout": "individual_files_preserve_relative_paths",
+    "include_globs": ["*.bam", "*.bam.bai", "*.bai"],
+    "batch_size": 25,
+    "verification": "a-check-object-names",
+    "automatic_delete_local": false
+  },
+  "restore": {
+    "free_space_multiplier": 1.10,
+    "overwrite_policy": "deny"
+  },
+  "slurm": {
+    "account": "project_2001113",
+    "partition": "small",
+    "time": "72:00:00",
+    "cpus": 1,
+    "mem": "4G"
+  },
+  "workflow_usage": ["graph_snp_discovery.haplotypecaller"],
+  "validation": {
+    "primary_suffix": ".bam",
+    "expected_primary_files": 458,
+    "require_index": true
+  },
+  "notes": [
+    "The controller is installed in the Mac GenomeAgent Git repository.",
+    "Only generated runtime scripts and logs are staged on Puhti.",
+    "Submission prompts the researcher to run Allas authentication before sbatch.",
+    "Credentials are never written to Git, scripts, task scans, or logs.",
+    "a-check verifies expected object names, not full object content integrity.",
+    "Allas Tools v0.1 never deletes local data automatically."
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.1",
+  "dataset_id": "pangenome_final_assemblies_29",
+  "title": "Final pangenome assemblies (29 assemblies)",
+  "description": "Final assembly collection consumed by Minigraph-Cactus, PGGB, and SVIM-asm.",
+  "assignment_status": "assigned",
+  "lifecycle_state": "available_local_and_uploading",
+  "scientific_links": [
+    {
+      "major_task": "pangenome_construction",
+      "task": "minigraph_cactus",
+      "relationship": "consumed_by",
+      "role": "input",
+      "evidence": [
+        "researcher-confirmed use of final assemblies"
+      ],
+      "added_at": "2026-07-19T11:20:16Z"
+    },
+    {
+      "major_task": "pangenome_construction",
+      "task": "pggb",
+      "relationship": "consumed_by",
+      "role": "input",
+      "evidence": [
+        "researcher-confirmed use of final assemblies"
+      ],
+      "added_at": "2026-07-19T11:20:16Z"
+    },
+    {
+      "major_task": "pangenome_construction",
+      "task": "svim_asm",
+      "relationship": "consumed_by",
+      "role": "input",
+      "evidence": [
+        "researcher-confirmed use of final assemblies"
+      ],
+      "added_at": "2026-07-19T11:20:16Z"
+    }
+  ],
+  "locations": [
+    {
+      "provider": "filesystem",
+      "host": "puhti",
+      "path": "/scratch/project_2001113/pangenome/minigraph_cactus_final_assemblies_nofilter_giraffe/Final_assemblies",
+      "state": "available_local",
+      "materialization": "complete",
+      "location_id": "a474a89dd3962df8",
+      "added_at": "2026-07-19T11:20:16Z"
+    },
+    {
+      "provider": "allas",
+      "bucket": "tuomas64-genomics",
+      "prefix": "Final_assemblies",
+      "state": "uploading",
+      "materialization": "complete",
+      "verification_status": "not_verified",
+      "location_id": "a6ac06f3e8ed1d28",
+      "added_at": "2026-07-19T11:20:16Z"
+    }
+  ],
+  "transfer_links": [
+    {
+      "task_id": "folder_final_assemblies_ca9a84679e",
+      "operation": "upload",
+      "status": "not_verified",
+      "added_at": "2026-07-19T11:20:16Z"
+    }
+  ],
+  "expected": {
+    "assemblies": 29
+  },
+  "safety": {
+    "automatic_local_deletion": false
+  },
+  "updated_at": "2026-07-19T11:20:16Z"
+}

@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.1",
+  "dataset_id": "graph_markdup_bams_458",
+  "title": "Deduplicated graph-mapped BAMs",
+  "description": "Deduplicated reference-coordinate BAMs derived from vg Giraffe mappings for 458 samples.",
+  "lifecycle_state": "available_local_and_uploading",
+  "created_by": {
+    "task_id": "graph_snp_indel_discovery",
+    "run_id": "graph_initial_458",
+    "stage_id": "markduplicates"
+  },
+  "used_by": [
+    {
+      "task_id": "graph_snp_indel_discovery",
+      "run_id": "graph_initial_458",
+      "stage_id": "gatk_haplotypecaller",
+      "role": "input"
+    }
+  ],
+  "locations": [
+    {
+      "host": "puhti",
+      "state": "available_local",
+      "path": "/scratch/project_2001113/pangenome/giraffe_mapping/bam_minicactus_complete_own_data_trimmed_vg174_rg_markdup",
+      "provider": "filesystem",
+      "materialization": "unknown",
+      "location_id": "8c08e16c1e0be2e9",
+      "added_at": "2026-07-19T11:20:16Z"
+    },
+    {
+      "host": "puhti",
+      "state": "available_local",
+      "path": "/scratch/project_2001113/pangenome/giraffe_mapping/bam_minicactus_complete_swedish_trimmed_vg174_rg_markdup",
+      "provider": "filesystem",
+      "materialization": "unknown",
+      "location_id": "352dbe8338df4ef8",
+      "added_at": "2026-07-19T11:20:16Z"
+    },
+    {
+      "provider": "allas",
+      "bucket": "tuomas64-genomics",
+      "prefix": "bam_minicactus_complete_own_data_trimmed_vg174_rg_markdup",
+      "state": "archived_unverified",
+      "materialization": "complete",
+      "verification_status": "not_verified",
+      "transfer_task_id": "graph_markdup_bams_458",
+      "location_id": "4c93fce85c68ee0a",
+      "added_at": "2026-07-19T11:20:16Z"
+    },
+    {
+      "provider": "allas",
+      "bucket": "tuomas64-genomics",
+      "prefix": "bam_minicactus_complete_swedish_trimmed_vg174_rg_markdup",
+      "state": "archived_unverified",
+      "materialization": "complete",
+      "verification_status": "not_verified",
+      "transfer_task_id": "graph_markdup_bams_458",
+      "location_id": "e7a31e5e68a23db3",
+      "added_at": "2026-07-19T11:20:16Z"
+    }
+  ],
+  "archive_manifest": "data_registry/archives/graph_markdup_bams_458.json",
+  "expected": {
+    "bam_files": 458,
+    "bam_indexes": 458,
+    "total_files": 916
+  },
+  "safety": {
+    "automatic_local_deletion": false,
+    "local_removal_requires_verified_archive_and_researcher_approval": true
+  },
+  "scientific_links": [
+    {
+      "major_task": "graph_snp_indel_discovery",
+      "run_id": "graph_initial_458",
+      "stage_id": "markduplicates",
+      "relationship": "produced_by",
+      "role": "output",
+      "evidence": [
+        "migrated from created_by"
+      ],
+      "added_at": "2026-07-19T11:20:15Z"
+    },
+    {
+      "major_task": "graph_snp_indel_discovery",
+      "run_id": "graph_initial_458",
+      "stage_id": "gatk_haplotypecaller",
+      "relationship": "consumed_by",
+      "role": "input",
+      "evidence": [
+        "migrated from used_by"
+      ],
+      "added_at": "2026-07-19T11:20:16Z"
+    }
+  ],
+  "transfer_links": [
+    {
+      "task_id": "graph_markdup_bams_458",
+      "operation": "upload",
+      "manifest_path": "data_registry/archives/graph_markdup_bams_458.json",
+      "status": "not_verified",
+      "added_at": "2026-07-19T11:20:16Z"
+    }
+  ],
+  "assignment_status": "assigned",
+  "updated_at": "2026-07-19T11:20:16Z"
+}

@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "definition_mode": "incremental_registry",
+  "task_id": "pangenome_construction",
+  "title": "Pangenome construction",
+  "description": "Incrementally reconstructed construction and use of the Fragaria vesca pangenome. Only tasks supported by registered datasets and successful project evidence are included.",
+  "status": "active",
+  "methods_boundary": "Incremental registry of evidenced pangenome construction tasks, datasets, software, and outputs; no unsupported stages are pre-populated.",
+  "tasks": [
+    {
+      "task_id": "minigraph_cactus",
+      "title": "Minigraph-Cactus graph construction",
+      "status": "completed"
+    },
+    {
+      "task_id": "pggb",
+      "title": "PGGB pangenome construction and variant discovery",
+      "status": "completed"
+    },
+    {
+      "task_id": "svim_asm",
+      "title": "SVIM-asm structural-variant discovery from assemblies",
+      "status": "completed"
+    }
+  ],
+  "stages": [],
+  "runs": [],
+  "registry_policy": {
+    "add_only_evidenced_tasks": true,
+    "allow_multiple_dataset_consumers": true,
+    "do_not_invent_missing_stages": true
+  }
+}

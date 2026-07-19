@@ -1,0 +1,256 @@
+{
+  "schema_version": "1.0",
+  "task_id": "linear_snp_indel_discovery",
+  "title": "Linear SNP/indel discovery",
+  "description": "Discovery of SNPs and small indels from paired-end Illumina FASTQs using the linear Fragaria vesca reference, ending in a validated raw multisample VCF.",
+  "status": "completed_with_active_rerun",
+  "methods_boundary": "Raw paired-end FASTQs through validated raw multisample SNP/indel VCF after joint genotyping",
+  "reference_context": {
+    "mapping_reference": "Fragaria vesca H4v6 linear reference",
+    "joint_calling_contigs": [
+      "chr1",
+      "chr2",
+      "chr3",
+      "chr4",
+      "chr5",
+      "chr6",
+      "chr7"
+    ],
+    "authoritative_paths_and_versions": "resolve_from successful scripts, Task Scans, Task State and final validation evidence"
+  },
+  "stages": [
+    {
+      "order": 1,
+      "stage_id": "raw_fastq_inputs",
+      "title": "Raw FASTQ inputs",
+      "methods_evidence_fields": [
+        "sample_set",
+        "read_layout",
+        "read_length",
+        "sequencing_sources",
+        "input_locations_or_archives"
+      ]
+    },
+    {
+      "order": 2,
+      "stage_id": "fastq_qc_and_trimming",
+      "title": "FASTQ QC and trimming",
+      "methods_evidence_fields": [
+        "software",
+        "software_version",
+        "parameters",
+        "input_manifest",
+        "output_manifest",
+        "validation"
+      ]
+    },
+    {
+      "order": 3,
+      "stage_id": "bwa_mem2_mapping",
+      "title": "BWA-MEM2 mapping",
+      "methods_evidence_fields": [
+        "software",
+        "software_version",
+        "reference",
+        "parameters",
+        "read_groups",
+        "scripts",
+        "validation"
+      ]
+    },
+    {
+      "order": 4,
+      "stage_id": "bam_sorting_and_indexing",
+      "title": "BAM sorting and indexing",
+      "methods_evidence_fields": [
+        "software",
+        "software_version",
+        "parameters",
+        "outputs",
+        "validation"
+      ]
+    },
+    {
+      "order": 5,
+      "stage_id": "markduplicates",
+      "title": "Duplicate marking",
+      "methods_evidence_fields": [
+        "software",
+        "software_version",
+        "parameters",
+        "metrics",
+        "outputs",
+        "validation"
+      ]
+    },
+    {
+      "order": 6,
+      "stage_id": "bam_qc",
+      "title": "BAM quality control",
+      "methods_evidence_fields": [
+        "qc_metrics",
+        "acceptance_rules",
+        "sample_exclusions",
+        "validation_outputs"
+      ]
+    },
+    {
+      "order": 7,
+      "stage_id": "gatk_haplotypecaller",
+      "title": "Per-sample GATK HaplotypeCaller",
+      "methods_evidence_fields": [
+        "software",
+        "software_version",
+        "reference",
+        "parameters",
+        "input_bams",
+        "output_gvcfs",
+        "validation"
+      ]
+    },
+    {
+      "order": 8,
+      "stage_id": "gvcf_validation",
+      "title": "GVCF validation",
+      "methods_evidence_fields": [
+        "expected_samples",
+        "observed_samples",
+        "index_validation",
+        "sample_identity_validation",
+        "validation_outputs"
+      ]
+    },
+    {
+      "order": 9,
+      "stage_id": "genomicsdbimport",
+      "title": "Chromosome-wise GenomicsDBImport",
+      "methods_evidence_fields": [
+        "software",
+        "software_version",
+        "sample_map",
+        "contigs",
+        "parameters",
+        "workspaces",
+        "validation",
+        "resource_evidence"
+      ]
+    },
+    {
+      "order": 10,
+      "stage_id": "genotypegvcfs",
+      "title": "GenotypeGVCFs joint genotyping",
+      "methods_evidence_fields": [
+        "software",
+        "software_version",
+        "reference",
+        "parameters",
+        "scatter_strategy",
+        "outputs",
+        "validation",
+        "resource_evidence"
+      ]
+    },
+    {
+      "order": 11,
+      "stage_id": "chromosome_vcf_validation",
+      "title": "Chromosome VCF validation",
+      "methods_evidence_fields": [
+        "expected_samples",
+        "contig_validation",
+        "index_validation",
+        "record_statistics",
+        "validation_outputs"
+      ]
+    },
+    {
+      "order": 12,
+      "stage_id": "gather_raw_multisample_vcf",
+      "title": "Gather raw multisample VCF",
+      "methods_evidence_fields": [
+        "software",
+        "software_version",
+        "input_order",
+        "parameters",
+        "output_vcf",
+        "output_index",
+        "checksums"
+      ]
+    },
+    {
+      "order": 13,
+      "stage_id": "raw_vcf_validation",
+      "title": "Raw multisample VCF validation",
+      "methods_evidence_fields": [
+        "sample_count",
+        "sample_order",
+        "contig_order",
+        "variant_statistics",
+        "readability",
+        "checksums",
+        "final_location_or_archive"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "linear_original_455",
+      "kind": "original",
+      "status": "completed",
+      "purpose": "Original completed linear SNP/indel discovery run retained as the original comparison dataset.",
+      "sample_count": 455,
+      "accepted_as": "original",
+      "state_source": "completed production evidence and Task State",
+      "stage_states": {
+        "raw_fastq_inputs": "historical_or_archived",
+        "fastq_qc_and_trimming": "completed",
+        "bwa_mem2_mapping": "completed",
+        "bam_sorting_and_indexing": "completed",
+        "markduplicates": "completed",
+        "bam_qc": "completed",
+        "gatk_haplotypecaller": "completed",
+        "gvcf_validation": "validated",
+        "genomicsdbimport": "completed",
+        "genotypegvcfs": "completed",
+        "chromosome_vcf_validation": "validated",
+        "gather_raw_multisample_vcf": "completed",
+        "raw_vcf_validation": "validated"
+      },
+      "methods_evidence": {}
+    },
+    {
+      "run_id": "linear_outlier_removed",
+      "kind": "derived_rerun",
+      "status": "active",
+      "derived_from": "linear_original_455",
+      "purpose": "Re-run joint discovery with selected outlier samples removed to test their effect on SNP/indel discovery and downstream results.",
+      "sample_count": null,
+      "sample_count_source": "discover from the reduced sample map",
+      "removed_samples_source": "record the researcher-approved exclusion list and rationale",
+      "comparison_target": "linear_original_455",
+      "reused_stages": [
+        "raw_fastq_inputs",
+        "fastq_qc_and_trimming",
+        "bwa_mem2_mapping",
+        "bam_sorting_and_indexing",
+        "markduplicates",
+        "bam_qc",
+        "gatk_haplotypecaller",
+        "gvcf_validation"
+      ],
+      "state_source": "Task Scanner and Task State Bridge are authoritative for current stage",
+      "stage_states": {
+        "genomicsdbimport": "unknown_requires_scan",
+        "genotypegvcfs": "active",
+        "chromosome_vcf_validation": "pending",
+        "gather_raw_multisample_vcf": "pending",
+        "raw_vcf_validation": "pending"
+      },
+      "methods_evidence": {}
+    }
+  ],
+  "future_calling_branches": {
+    "gatk": "implemented",
+    "deepvariant": "planned alternative branch from validated BAMs; not a post-GATK stage"
+  },
+  "downstream_boundary": "Variant filtering, PCA, population structure, phasing, ROH and demographic analyses are separate downstream tasks."
+}

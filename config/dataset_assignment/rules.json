@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "rules": [
+    {
+      "rule_id": "pangenome_final_assemblies",
+      "match": [
+        "/minigraph_cactus_final_assemblies_nofilter_giraffe/Final_assemblies/?$",
+        "folder_final_assemblies_[A-Za-z0-9]+$"
+      ],
+      "confidence": "high",
+      "dataset_id": "pangenome_final_assemblies_29",
+      "title": "Final pangenome assemblies (29 assemblies)",
+      "description": "Final assembly collection used by Minigraph-Cactus, PGGB, and SVIM-asm.",
+      "scientific_links": [
+        {
+          "major_task": "pangenome_construction",
+          "task": "minigraph_cactus",
+          "relationship": "consumed_by",
+          "role": "input"
+        },
+        {
+          "major_task": "pangenome_construction",
+          "task": "pggb",
+          "relationship": "consumed_by",
+          "role": "input"
+        },
+        {
+          "major_task": "pangenome_construction",
+          "task": "svim_asm",
+          "relationship": "consumed_by",
+          "role": "input"
+        }
+      ]
+    },
+    {
+      "rule_id": "linear_gvcfs",
+      "match": ["/scratch/project_2001113/GATK/gvcf/?$"],
+      "confidence": "high",
+      "dataset_id": "linear_gvcfs_455",
+      "title": "Linear-reference GVCFs (455 samples)",
+      "description": "Per-sample GVCFs from the original linear SNP/indel discovery run.",
+      "scientific_links": [
+        {
+          "major_task": "linear_snp_indel_discovery",
+          "run_id": "linear_original_455",
+          "stage_id": "gatk_haplotypecaller",
+          "relationship": "produced_by",
+          "role": "output"
+        }
+      ]
+    },
+    {
+      "rule_id": "graph_gvcfs",
+      "match": ["/scratch/project_2001113/GATK_graph/gvcf/?$"],
+      "confidence": "high",
+      "dataset_id": "graph_gvcfs_458",
+      "title": "Graph-mapped GVCFs (458 samples)",
+      "description": "Per-sample GVCFs produced from graph-surjected MarkDuplicates BAMs.",
+      "scientific_links": [
+        {
+          "major_task": "graph_snp_indel_discovery",
+          "run_id": "graph_initial_458",
+          "stage_id": "gatk_haplotypecaller",
+          "relationship": "produced_by",
+          "role": "output"
+        }
+      ]
+    }
+  ]
+}

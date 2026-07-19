@@ -1,75 +1,30 @@
 #!/usr/bin/env python3
-"""Ingest Task Scanner bundles into GenomeAgent's operational knowledge bridge."""
-
+"""GenomeAgent task discovery shim: Task State Bridge stable CLI."""
 from __future__ import annotations
 
-import argparse
-import sys
+import os
 from pathlib import Path
+import subprocess
+import sys
 
-
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-if str(REPOSITORY_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPOSITORY_ROOT))
-
-from genomeagent.task_state import (  # noqa: E402
-    SUPPORTED_TASKS,
-    TaskStateBridge,
-    TaskStateError,
-)
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Replay read-only Task Scanner bundles into deterministic current state, "
-            "history, provenance and recommendations."
-        )
-    )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-    ingest = subparsers.add_parser("ingest", help="Ingest all scan bundles for one task.")
-    ingest.add_argument("task", choices=sorted(SUPPORTED_TASKS))
-    ingest.add_argument(
-        "--scan-root",
-        type=Path,
-        default=Path("workspace/task_scans"),
-        help="Root containing <task>/<timestamp>/task_scan.json bundles.",
-    )
-    ingest.add_argument(
-        "--state-root",
-        type=Path,
-        default=Path("workspace/task_state"),
-        help="Root for canonical task-state artifacts.",
-    )
-    return parser.parse_args()
+ROOT = Path(__file__).resolve().parents[1]
+IMPL = Path(__file__).with_name("task_state_impl.py")
+sys.path.insert(0, str(ROOT))
+from genomeagent.task_catalog import print_task_catalog  # noqa: E402
 
 
 def main() -> int:
-    args = parse_args()
-    try:
-        bridge = TaskStateBridge(
-            scan_root=args.scan_root,
-            state_root=args.state_root,
-        )
-        result = bridge.ingest(args.task)
-    except TaskStateError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 2
-
-    print("=" * 80)
-    print(f"GenomeAgent Task State Bridge: {result.task}")
-    print("=" * 80)
-    print("Source mode     : read-only scan replay")
-    print("Local writes    : canonical state artifacts only")
-    print(f"Source scans    : {result.source_scans}")
-    print(f"Latest scan     : {result.latest_scan_id}")
-    print(f"Overall status  : {result.overall_status}")
-    print(f"History events  : {result.events}")
-    print(f"Recommendations : {result.recommendations}")
-    print("")
-    print(f"State directory : {result.state_dir}")
-    for path in result.artifact_paths:
-        print(f"Wrote: {path}")
+    args = sys.argv[1:]
+    if args in (["list"], ["--list-tasks"]):
+        print_task_catalog(ROOT, "bridge")
+        return 0
+    if "--help" in args or "-h" in args:
+        proc = subprocess.run([sys.executable, str(IMPL), *args])
+        print()
+        print_task_catalog(ROOT, "bridge")
+        print("\nConvenience: python3 scripts/task_state.py list")
+        return proc.returncode
+    os.execv(sys.executable, [sys.executable, str(IMPL), *args])
     return 0
 
 

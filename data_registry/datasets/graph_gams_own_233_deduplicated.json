@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.1",
+  "dataset_id": "graph_gams_own_233_deduplicated",
+  "title": "graph_gams_own_233_deduplicated",
+  "description": "",
+  "lifecycle_state": "available_local_and_uploading",
+  "scientific_links": [
+    {
+      "major_task": "graph_sv_genotyping",
+      "relationship": "consumed_by",
+      "added_at": "2026-07-19T12:16:12Z",
+      "role": "input",
+      "task": "vg_pack",
+      "evidence": [
+        "researcher assignment through genomeagent-datasets"
+      ]
+    },
+    {
+      "major_task": "graph_sv_genotyping",
+      "relationship": "produced_by",
+      "added_at": "2026-07-19T12:17:02Z",
+      "role": "output",
+      "task": "gam_deduplication",
+      "evidence": [
+        "researcher assignment through genomeagent-datasets"
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "provider": "filesystem",
+      "host": "puhti",
+      "path": "/scratch/project_2001113/pangenome/giraffe_mapping/own_deduplicated_from_allas/deduplicated_gams",
+      "state": "available_local",
+      "materialization": "complete",
+      "location_id": "497478ce5648d1ad",
+      "added_at": "2026-07-19T12:17:11Z"
+    },
+    {
+      "provider": "allas",
+      "bucket": "tuomas64-genomics",
+      "prefix": "deduplicated_gams",
+      "state": "archived_unverified",
+      "materialization": "complete",
+      "verification_status": "not_verified",
+      "transfer_task_id": "folder_deduplicated_gams_8e32dff1d4",
+      "location_id": "cf63593d915e8928",
+      "added_at": "2026-07-19T12:59:10Z"
+    }
+  ],
+  "transfer_links": [
+    {
+      "task_id": "folder_deduplicated_gams_8e32dff1d4",
+      "operation": "upload",
+      "manifest_path": "workspace/allas_tasks/_adhoc_manifests/folder_deduplicated_gams_8e32dff1d4.json",
+      "status": "not_verified",
+      "added_at": "2026-07-19T12:59:10Z"
+    }
+  ],
+  "created_at": "2026-07-19T12:17:11Z",
+  "safety": {
+    "automatic_local_deletion": false
+  },
+  "assignment_status": "assigned",
+  "updated_at": "2026-07-19T12:59:10Z"
+}
